@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String       @id @default(cuid())
+  name        String
+  email       String       @unique
+  password    String
+  crm         String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  hospitais   Hospital[]
+  empresas    Empresa[]
+  notasFiscais NotaFiscal[]
+  settings    AppSettings?
+}
+
+model Hospital {
+  id                    String        @id @default(cuid())
+  userId                String
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nome                  String
+  cnpj                  String
+  cidade                String
+  estado                String
+  contatoFinanceiro     String?
+  telefone              String?
+  prazoMedioPagamento   Int           @default(30)
+  cor                   String        @default("#10b981")
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  plantoes              Plantao[]
+  notasFiscais          NotaFiscal[]
+
+  @@unique([userId, cnpj])
+}
+
+model Empresa {
+  id                String          @id @default(cuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cnpj              String
+  razaoSocial       String
+  nomeFantasia      String
+  regimeTributario  String
+  cnae              String
+  fatorR            Decimal         @db.Decimal(5, 2)
+  situacao          EmpresaSituacao @default(ATIVA)
+  dataAbertura      DateTime
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([userId, cnpj])
+}
+
+model AppSettings {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nome           String
+  email          String
+  telefone       String?
+  crm            String?
+  endereco       String?
+  especialidade  String
+  atuacao        String
+  darkMode       Boolean  @default(false)
+  emailAlerts    Boolean  @default(true)
+  pushAlerts     Boolean  @default(true)
+  smsAlerts      Boolean  @default(false)
+  vencimentos    Boolean  @default(true)
+  relatorios     Boolean  @default(true)
+  alertas        Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
+}
+
+model Plantao {
+  id            String        @id @default(cuid())
+  hospitalId    String
+  hospital      Hospital      @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  data          DateTime
+  horaInicio    String
+  horaFim       String
+  especialidade String
+  valor         Decimal       @db.Decimal(10, 2)
+  status        PlantaoStatus @default(AGENDADO)
+  notaFiscalId  String?
+  notaFiscal    NotaFiscal?   @relation(fields: [notaFiscalId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model NotaFiscal {
+  id          String     @id @default(cuid())
+  numero      String     @unique
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hospitalId  String
+  hospital    Hospital   @relation(fields: [hospitalId], references: [id], onDelete: Restrict)
+  valor       Decimal    @db.Decimal(10, 2)
+  competencia String
+  dataEmissao DateTime   @default(now())
+  status      NotaStatus @default(EMITIDA)
+  descricao   String?
+  plantoes    Plantao[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+enum PlantaoStatus {
+  AGENDADO
+  REALIZADO
+  FATURADO
+  RECEBIDO
+}
+
+enum NotaStatus {
+  EMITIDA
+  CANCELADA
+}
+
+enum EmpresaSituacao {
+  ATIVA
+  SUSPENSA
+  BAIXADA
+}

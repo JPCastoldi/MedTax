@@ -1,0 +1,135 @@
+"use client"
+
+import { useEffect, useMemo, useState } from "react"
+import { Download, FileSpreadsheet, RefreshCw } from "lucide-react"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { DashboardData, Empresa, Hospital, NotaFiscal, Plantao } from "@/lib/types"
+
+type Report = {
+  dashboard: DashboardData
+  hospitais: Hospital[]
+  plantoes: Plantao[]
+  notas: NotaFiscal[]
+  empresas: Empresa[]
+}
+
+export default function RelatoriosPage() {
+  const [report, setReport] = useState<Report | null>(null)
+  const [tipo, setTipo] = useState("plantoes")
+
+  async function load() {
+    const response = await fetch("/api/relatorios")
+    setReport(await response.json())
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  const chartData = useMemo(() => {
+    if (!report) return []
+    return report.hospitais.map((hospital) => ({
+      name: hospital.nome,
+      faturado: hospital.totalFaturado,
+      plantoes: hospital.plantoesRealizados,
+    }))
+  }, [report])
+
+  function download(filename: string, content: string, type: string) {
+    const blob = new Blob([content], { type })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function exportCsv() {
+    if (!report) return
+    const rows = tipo === "notas"
+      ? report.notas.map((nota) => [nota.numero, nota.tomador, nota.competencia, nota.valor, nota.status])
+      : tipo === "empresas"
+        ? report.empresas.map((empresa) => [empresa.cnpj, empresa.razaoSocial, empresa.regimeTributario, empresa.fatorR, empresa.situacao])
+        : report.plantoes.map((plantao) => [plantao.data, plantao.hospitalNome, plantao.especialidade, plantao.valor, plantao.status])
+    const header = tipo === "notas"
+      ? ["numero", "tomador", "competencia", "valor", "status"]
+      : tipo === "empresas"
+        ? ["cnpj", "razaoSocial", "regime", "fatorR", "situacao"]
+        : ["data", "hospital", "especialidade", "valor", "status"]
+    const csv = [header, ...rows].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n")
+    download(`medtax-${tipo}.csv`, csv, "text/csv;charset=utf-8")
+  }
+
+  function exportJson() {
+    if (!report) return
+    download("medtax-relatorio-completo.json", JSON.stringify(report, null, 2), "application/json")
+  }
+
+  if (!report) return <p>Carregando relatorios...</p>
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Relatorios</h1>
+          <p className="text-muted-foreground">Indicadores e exportacoes baseados no banco/dados do app.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Select value={tipo} onValueChange={setTipo}>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="plantoes">Plantoes</SelectItem>
+              <SelectItem value="notas">Notas</SelectItem>
+              <SelectItem value="empresas">Empresas</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={load}><RefreshCw className="mr-2 h-4 w-4" />Atualizar</Button>
+          <Button onClick={exportCsv}><Download className="mr-2 h-4 w-4" />CSV</Button>
+          <Button variant="outline" onClick={exportJson}><FileSpreadsheet className="mr-2 h-4 w-4" />JSON</Button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <Metric title="Hospitais" value={String(report.hospitais.length)} />
+        <Metric title="Plantoes" value={String(report.plantoes.length)} />
+        <Metric title="Notas" value={String(report.notas.length)} />
+        <Metric title="Faturamento" value={`R$ ${report.dashboard.kpis.valorPrevisto.toLocaleString("pt-BR")}`} />
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle>Faturamento por hospital</CardTitle></CardHeader>
+        <CardContent className="h-80">
+          <ResponsiveContainer>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+              <YAxis />
+              <Tooltip formatter={(value: number) => `R$ ${value.toLocaleString("pt-BR")}`} />
+              <Bar dataKey="faturado" fill="#10b981" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Resumo operacional</CardTitle></CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2">
+          {report.hospitais.map((hospital) => (
+            <div key={hospital.id} className="rounded-md border p-3">
+              <p className="font-medium">{hospital.nome}</p>
+              <p className="text-sm text-muted-foreground">{hospital.plantoesRealizados} plantoes realizados | R$ {hospital.totalFaturado.toLocaleString("pt-BR")} faturados</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function Metric({ title, value }: { title: string; value: string }) {
+  return <Card><CardHeader><CardTitle className="text-sm text-muted-foreground">{title}</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{value}</CardContent></Card>
+}
