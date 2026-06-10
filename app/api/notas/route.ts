@@ -12,8 +12,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { hospitalId, competencia } = await request.json()
-    return NextResponse.json(await gerarNotaPorHospital(hospitalId, competencia, await getSessionUserId()))
+    const { hospitalId, competencia, plantaoIds, dataEmissao } = await request.json()
+    return NextResponse.json(await gerarNotaPorHospital(hospitalId, competencia, await getSessionUserId(), { plantaoIds, dataEmissao }))
   } catch (error) {
     return apiError(error)
   }

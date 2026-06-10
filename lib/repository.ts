@@ -209,8 +209,18 @@ export async function listNotas(userId?: string | null) {
   return store().notas
 }
 
-export async function gerarNotaPorHospital(hospitalId: string, competencia: string, userId?: string | null) {
-  const plantoes = (await listPlantoes(userId)).filter((p) => p.hospitalId === hospitalId && p.status === "realizado")
+export async function gerarNotaPorHospital(
+  hospitalId: string,
+  competencia: string,
+  userId?: string | null,
+  options?: { plantaoIds?: string[]; dataEmissao?: string }
+) {
+  const plantoes = (await listPlantoes(userId)).filter((p) => {
+    const belongsToHospital = p.hospitalId === hospitalId
+    const isReadyToBill = p.status === "realizado"
+    const wasSelected = !options?.plantaoIds?.length || options.plantaoIds.includes(p.id)
+    return belongsToHospital && isReadyToBill && wasSelected
+  })
   if (plantoes.length === 0) return null
   const hospital = (await listHospitals(userId)).find((h) => h.id === hospitalId)
   if (!hospital) return null
@@ -218,12 +228,21 @@ export async function gerarNotaPorHospital(hospitalId: string, competencia: stri
   const numero = `${new Date().getFullYear()}${String(Date.now()).slice(-6)}`
   if (hasDatabaseUrl()) {
     if (!userId) throw new Error("Usuario nao autenticado.")
-    const nota = await prisma.notaFiscal.create({ data: { numero, userId, hospitalId, valor, competencia } })
+    const nota = await prisma.notaFiscal.create({
+      data: {
+        numero,
+        userId,
+        hospitalId,
+        valor,
+        competencia,
+        dataEmissao: new Date(`${options?.dataEmissao ?? isoDate(new Date())}T12:00:00`),
+      },
+    })
     await prisma.plantao.updateMany({ where: { id: { in: plantoes.map((p) => p.id) } }, data: { status: "FATURADO", notaFiscalId: nota.id } })
     return nota
   }
   const data = store()
-  const nota: NotaFiscal = { id: crypto.randomUUID(), numero, tomador: hospital.nome, cnpjTomador: hospital.cnpj, hospitalId, valor, dataEmissao: isoDate(new Date()), competencia, status: "emitida", empresa: "MedTax" }
+  const nota: NotaFiscal = { id: crypto.randomUUID(), numero, tomador: hospital.nome, cnpjTomador: hospital.cnpj, hospitalId, valor, dataEmissao: options?.dataEmissao ?? isoDate(new Date()), competencia, status: "emitida", empresa: "MedTax" }
   data.notas.unshift(nota)
   data.plantoes = data.plantoes.map((p) => (plantoes.some((item) => item.id === p.id) ? { ...p, status: "faturado", notaFiscalId: nota.id } : p))
   return nota
@@ -231,7 +250,7 @@ export async function gerarNotaPorHospital(hospitalId: string, competencia: stri
 
 export async function dashboardData(userId?: string | null): Promise<DashboardData> {
   const [plantoes, notas, hospitais] = await Promise.all([listPlantoes(userId), listNotas(userId), listHospitals(userId)])
-  const nowMonth = "2026-06"
+  const nowMonth = isoDate(new Date()).slice(0, 7)
   const plantoesMes = plantoes.filter((p) => p.data.startsWith(nowMonth))
   const valorPrevisto = plantoesMes.reduce((sum, p) => sum + p.valor, 0)
   const valorFaturado = plantoesMes.filter((p) => ["faturado", "recebido"].includes(p.status)).reduce((sum, p) => sum + p.valor, 0)

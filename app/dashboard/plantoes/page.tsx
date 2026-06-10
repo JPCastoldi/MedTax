@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns"
+import { addMonths, eachDayOfInterval, endOfMonth, format, parseISO, startOfMonth, subMonths } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { CalendarDays, FileText, Plus, Trash2 } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, FileText, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Hospital, Plantao, PlantaoStatus } from "@/lib/types"
 
+const today = new Date()
+
 const emptyForm = {
   hospitalId: "",
-  data: format(new Date(), "yyyy-MM-dd"),
+  data: format(today, "yyyy-MM-dd"),
   horaInicio: "19:00",
   horaFim: "07:00",
   especialidade: "Clinica Geral",
@@ -26,7 +28,11 @@ export default function PlantoesPage() {
   const [plantoes, setPlantoes] = useState<Plantao[]>([])
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const currentDate = new Date(2026, 5, 1)
+  const [currentDate, setCurrentDate] = useState(startOfMonth(today))
+  const [billingHospitalId, setBillingHospitalId] = useState("")
+  const [billingPlantaoIds, setBillingPlantaoIds] = useState<string[]>([])
+  const [dataEmissao, setDataEmissao] = useState(format(today, "yyyy-MM-dd"))
+  const [competencia, setCompetencia] = useState(format(today, "yyyy-MM"))
 
   async function load() {
     const [hospitaisResponse, plantoesResponse] = await Promise.all([
@@ -34,8 +40,9 @@ export default function PlantoesPage() {
       fetch("/api/plantoes"),
     ])
     const hospitalsData = await hospitaisResponse.json()
+    const plantoesData = await plantoesResponse.json()
     setHospitais(hospitalsData)
-    setPlantoes(await plantoesResponse.json())
+    setPlantoes(plantoesData)
     setForm((current) => ({ ...current, hospitalId: current.hospitalId || hospitalsData[0]?.id || "" }))
   }
 
@@ -43,15 +50,37 @@ export default function PlantoesPage() {
     load()
   }, [])
 
-  const monthDays = useMemo(() => eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }), [])
-  const realizadosPorHospital = useMemo(() => {
+  const monthDays = useMemo(
+    () => eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }),
+    [currentDate]
+  )
+
+  const pendentesPorHospital = useMemo(() => {
     return hospitais
       .map((hospital) => ({
         hospital,
-        plantoes: plantoes.filter((p) => p.hospitalId === hospital.id && p.status === "realizado"),
+        plantoes: plantoes.filter((plantao) => plantao.hospitalId === hospital.id && plantao.status === "realizado"),
       }))
       .filter((item) => item.plantoes.length > 0)
   }, [hospitais, plantoes])
+
+  const selectedBillingGroup = pendentesPorHospital.find((item) => item.hospital.id === billingHospitalId) ?? pendentesPorHospital[0]
+
+  useEffect(() => {
+    if (!selectedBillingGroup) {
+      setBillingHospitalId("")
+      setBillingPlantaoIds([])
+      return
+    }
+    if (!billingHospitalId) {
+      setBillingHospitalId(selectedBillingGroup.hospital.id)
+    }
+    setBillingPlantaoIds((current) => {
+      const validIds = selectedBillingGroup.plantoes.map((plantao) => plantao.id)
+      const currentValid = current.filter((id) => validIds.includes(id))
+      return currentValid.length > 0 ? currentValid : validIds
+    })
+  }, [billingHospitalId, selectedBillingGroup])
 
   async function save() {
     const url = editingId ? `/api/plantoes/${editingId}` : "/api/plantoes"
@@ -70,11 +99,18 @@ export default function PlantoesPage() {
     await load()
   }
 
-  async function gerarNota(hospitalId: string) {
+  async function gerarNota() {
+    if (!selectedBillingGroup || billingPlantaoIds.length === 0) return
+    const [year, month] = competencia.split("-")
     await fetch("/api/notas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hospitalId, competencia: "06/2026" }),
+      body: JSON.stringify({
+        hospitalId: selectedBillingGroup.hospital.id,
+        plantaoIds: billingPlantaoIds,
+        dataEmissao,
+        competencia: `${month}/${year}`,
+      }),
     })
     await load()
   }
@@ -92,27 +128,46 @@ export default function PlantoesPage() {
     })
   }
 
-  const stats = {
-    total: plantoes.length,
-    previsto: plantoes.reduce((sum, p) => sum + p.valor, 0),
-    faturado: plantoes.filter((p) => ["faturado", "recebido"].includes(p.status)).reduce((sum, p) => sum + p.valor, 0),
-    recebidos: plantoes.filter((p) => p.status === "recebido").reduce((sum, p) => sum + p.valor, 0),
+  function toggleBillingPlantao(id: string) {
+    setBillingPlantaoIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
   }
+
+  const monthPlantoes = plantoes.filter((plantao) => plantao.data.startsWith(format(currentDate, "yyyy-MM")))
+  const stats = {
+    total: monthPlantoes.length,
+    previsto: monthPlantoes.reduce((sum, p) => sum + p.valor, 0),
+    faturado: monthPlantoes.filter((p) => ["faturado", "recebido"].includes(p.status)).reduce((sum, p) => sum + p.valor, 0),
+    recebidos: monthPlantoes.filter((p) => p.status === "recebido").reduce((sum, p) => sum + p.valor, 0),
+  }
+
+  const selectedTotal = selectedBillingGroup?.plantoes
+    .filter((plantao) => billingPlantaoIds.includes(plantao.id))
+    .reduce((sum, plantao) => sum + plantao.valor, 0) ?? 0
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Agenda de Plantoes</h1>
-          <p className="text-muted-foreground">Plantoes persistidos e calendario funcional.</p>
+          <p className="text-muted-foreground">Navegue por qualquer mes/ano e fature plantoes quando a nota sair.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => setCurrentDate(subMonths(currentDate, 1))}><ChevronLeft className="h-4 w-4" /></Button>
+          <Input
+            type="month"
+            value={format(currentDate, "yyyy-MM")}
+            onChange={(event) => setCurrentDate(startOfMonth(parseISO(`${event.target.value}-01`)))}
+            className="w-40"
+          />
+          <Button variant="outline" size="icon" onClick={() => setCurrentDate(addMonths(currentDate, 1))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Metric title="Plantoes" value={String(stats.total)} />
-        <Metric title="Previsto" value={`R$ ${stats.previsto.toLocaleString("pt-BR")}`} />
-        <Metric title="Faturado" value={`R$ ${stats.faturado.toLocaleString("pt-BR")}`} />
-        <Metric title="Recebido" value={`R$ ${stats.recebidos.toLocaleString("pt-BR")}`} />
+        <Metric title="Plantoes no mes" value={String(stats.total)} />
+        <Metric title="Previsto no mes" value={`R$ ${stats.previsto.toLocaleString("pt-BR")}`} />
+        <Metric title="Faturado no mes" value={`R$ ${stats.faturado.toLocaleString("pt-BR")}`} />
+        <Metric title="Recebido no mes" value={`R$ ${stats.recebidos.toLocaleString("pt-BR")}`} />
       </div>
 
       <Card>
@@ -149,25 +204,56 @@ export default function PlantoesPage() {
         </CardContent>
       </Card>
 
-      {realizadosPorHospital.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle>Geracao de faturamento por hospital</CardTitle></CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2">
-            {realizadosPorHospital.map(({ hospital, plantoes }) => (
-              <div key={hospital.id} className="flex items-center justify-between rounded-md border p-3">
-                <div>
-                  <p className="font-medium">{hospital.nome}</p>
-                  <p className="text-sm text-muted-foreground">{plantoes.length} plantoes, R$ {plantoes.reduce((s, p) => s + p.valor, 0).toLocaleString("pt-BR")}</p>
+      <Card>
+        <CardHeader><CardTitle>Faturamento por hospital</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          {pendentesPorHospital.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum plantao realizado pendente de nota.</p>
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="space-y-2">
+                  <Label>Hospital</Label>
+                  <Select value={selectedBillingGroup?.hospital.id} onValueChange={(hospitalId) => { setBillingHospitalId(hospitalId); setBillingPlantaoIds([]) }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {pendentesPorHospital.map(({ hospital, plantoes }) => (
+                        <SelectItem key={hospital.id} value={hospital.id}>{hospital.nome} ({plantoes.length})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Button onClick={() => gerarNota(hospital.id)}><FileText className="mr-2 h-4 w-4" />Gerar nota</Button>
+                <Field label="Data de emissao" type="date" value={dataEmissao} onChange={setDataEmissao} />
+                <Field label="Competencia da nota" type="month" value={competencia} onChange={setCompetencia} />
+                <div className="flex items-end">
+                  <Button className="w-full" onClick={gerarNota}><FileText className="mr-2 h-4 w-4" />Gerar nota</Button>
+                </div>
               </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+
+              <div className="rounded-md border">
+                {selectedBillingGroup?.plantoes.map((plantao) => (
+                  <label key={plantao.id} className="flex cursor-pointer items-center justify-between gap-3 border-b p-3 last:border-b-0">
+                    <span className="flex items-center gap-3">
+                      <input type="checkbox" checked={billingPlantaoIds.includes(plantao.id)} onChange={() => toggleBillingPlantao(plantao.id)} />
+                      <span>
+                        <strong>{format(parseISO(plantao.data), "dd/MM/yyyy")}</strong>
+                        <span className="ml-2 text-sm text-muted-foreground">{plantao.especialidade} | {plantao.horaInicio}-{plantao.horaFim}</span>
+                      </span>
+                    </span>
+                    <span className="font-semibold">R$ {plantao.valor.toLocaleString("pt-BR")}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Total selecionado: <strong>R$ {selectedTotal.toLocaleString("pt-BR")}</strong>. A data do plantao e a data de emissao da nota ficam independentes.
+              </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5" />Junho 2026</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><CalendarDays className="h-5 w-5" />{format(currentDate, "MMMM yyyy", { locale: ptBR })}</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-3 md:grid-cols-7">
           {monthDays.map((day) => {
             const dayPlantoes = plantoes.filter((p) => p.data === format(day, "yyyy-MM-dd"))
@@ -177,7 +263,7 @@ export default function PlantoesPage() {
                 <div className="space-y-1">
                   {dayPlantoes.map((plantao) => (
                     <button key={plantao.id} className="block w-full rounded px-2 py-1 text-left text-xs text-white" style={{ backgroundColor: plantao.hospitalCor }} onClick={() => edit(plantao)}>
-                      {plantao.horaInicio} {plantao.hospitalNome}
+                      {plantao.horaInicio} {plantao.hospitalNome} ({plantao.status})
                     </button>
                   ))}
                 </div>
