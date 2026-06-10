@@ -264,7 +264,6 @@ export async function dashboardData(userId?: string | null): Promise<DashboardDa
       revenueData: [{ month: nowMonth, faturamento: valorFaturado, impostos: impostosEstimados }],
     pieData: [
       { name: "Recebimento", value: valorRecebido, color: "#10b981" },
-      { name: "Producao do mes", value: valorPrevisto, color: "#3b82f6" },
       { name: "Pendente de nota", value: pendenteNota, color: "#f59e0b" },
     ],
     proximosPlantoes: plantoes.filter((p) => p.status === "agendado").slice(0, 4),

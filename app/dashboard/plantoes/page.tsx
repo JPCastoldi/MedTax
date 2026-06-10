@@ -140,7 +140,7 @@ export default function PlantoesPage() {
   const pendentesDoMes = monthPlantoes.filter((plantao) => plantao.status === "realizado")
   const stats = {
     total: monthPlantoes.length,
-    previsto: monthPlantoes.reduce((sum, p) => sum + p.valor, 0),
+    notasNoMes: monthNotas.filter((nota) => nota.status === "emitida").length,
     recebimento: monthNotas.filter((nota) => nota.status === "emitida").reduce((sum, nota) => sum + nota.valor, 0),
     pendenteNota: pendentesDoMes.reduce((sum, plantao) => sum + plantao.valor, 0),
   }
@@ -170,8 +170,8 @@ export default function PlantoesPage() {
 
       <div className="grid gap-4 md:grid-cols-4">
         <Metric title="Plantoes no mes" value={String(stats.total)} />
-        <Metric title="Producao do mes" value={`R$ ${stats.previsto.toLocaleString("pt-BR")}`} />
-        <Metric title="Recebimento por notas" value={`R$ ${stats.recebimento.toLocaleString("pt-BR")}`} />
+        <Metric title="Notas no mes" value={String(stats.notasNoMes)} />
+        <Metric title="A receber no mes" value={`R$ ${stats.recebimento.toLocaleString("pt-BR")}`} />
         <Metric title="Pendente de nota" value={`R$ ${stats.pendenteNota.toLocaleString("pt-BR")}`} />
       </div>
 
