@@ -11,7 +11,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
 export function AuthBrand({ subtitle = "Sua rotina financeira organizada." }: { subtitle?: string }) {
   return (
     <div className="flex flex-col items-center mt-4 mb-8">
-      <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg mb-3 shadow-sm">
+      <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white font-bold text-lg mb-3 shadow-sm">
         M
       </div>
       <h1 className="text-[24px] font-semibold text-slate-950">Med Tax</h1>
@@ -41,7 +41,7 @@ export function AuthField({
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full h-12 px-4 rounded-xl bg-white border border-slate-200 text-slate-950 text-[15px] placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
+        className="w-full h-12 px-4 rounded-xl bg-white border border-slate-200 text-slate-950 text-[15px] placeholder:text-slate-400 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition"
       />
     </label>
   )
@@ -52,7 +52,7 @@ export function AuthPrimaryButton({ children, disabled }: { children: React.Reac
     <button
       type="submit"
       disabled={disabled}
-      className="w-full h-12 rounded-full bg-blue-600 text-white font-semibold text-[15px] transition-colors hover:bg-blue-700 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full h-12 rounded-full bg-emerald-600 text-white font-semibold text-[15px] transition-colors hover:bg-emerald-700 active:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {children}
     </button>
@@ -65,7 +65,7 @@ export function OnboardingProgress({ step, total }: { step: number; total: numbe
       {Array.from({ length: total }).map((_, index) => (
         <div
           key={index}
-          className={`h-1.5 flex-1 rounded-full ${index < step ? "bg-blue-600" : "bg-slate-200"}`}
+          className={`h-1.5 flex-1 rounded-full ${index < step ? "bg-emerald-600" : "bg-slate-200"}`}
         />
       ))}
     </div>
