@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { Hospital, Plantao, PlantaoStatus } from "@/lib/types"
+import type { Hospital, NotaFiscal, Plantao, PlantaoStatus } from "@/lib/types"
 
 const today = new Date()
 
@@ -26,6 +26,7 @@ const emptyForm = {
 export default function PlantoesPage() {
   const [hospitais, setHospitais] = useState<Hospital[]>([])
   const [plantoes, setPlantoes] = useState<Plantao[]>([])
+  const [notas, setNotas] = useState<NotaFiscal[]>([])
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [currentDate, setCurrentDate] = useState(startOfMonth(today))
@@ -35,14 +36,16 @@ export default function PlantoesPage() {
   const [competencia, setCompetencia] = useState(format(today, "yyyy-MM"))
 
   async function load() {
-    const [hospitaisResponse, plantoesResponse] = await Promise.all([
+    const [hospitaisResponse, plantoesResponse, notasResponse] = await Promise.all([
       fetch("/api/hospitais"),
       fetch("/api/plantoes"),
+      fetch("/api/notas"),
     ])
     const hospitalsData = await hospitaisResponse.json()
     const plantoesData = await plantoesResponse.json()
     setHospitais(hospitalsData)
     setPlantoes(plantoesData)
+    setNotas(await notasResponse.json())
     setForm((current) => ({ ...current, hospitalId: current.hospitalId || hospitalsData[0]?.id || "" }))
   }
 
@@ -133,11 +136,12 @@ export default function PlantoesPage() {
   }
 
   const monthPlantoes = plantoes.filter((plantao) => plantao.data.startsWith(format(currentDate, "yyyy-MM")))
+  const monthNotas = notas.filter((nota) => nota.dataEmissao.startsWith(format(currentDate, "yyyy-MM")))
   const stats = {
     total: monthPlantoes.length,
     previsto: monthPlantoes.reduce((sum, p) => sum + p.valor, 0),
-    faturado: monthPlantoes.filter((p) => ["faturado", "recebido"].includes(p.status)).reduce((sum, p) => sum + p.valor, 0),
-    recebidos: monthPlantoes.filter((p) => p.status === "recebido").reduce((sum, p) => sum + p.valor, 0),
+    faturado: monthNotas.filter((nota) => nota.status === "emitida").reduce((sum, nota) => sum + nota.valor, 0),
+    recebidos: monthNotas.filter((nota) => nota.status === "emitida").reduce((sum, nota) => sum + nota.valor, 0),
   }
 
   const selectedTotal = selectedBillingGroup?.plantoes
@@ -166,8 +170,8 @@ export default function PlantoesPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Metric title="Plantoes no mes" value={String(stats.total)} />
         <Metric title="Previsto no mes" value={`R$ ${stats.previsto.toLocaleString("pt-BR")}`} />
-        <Metric title="Faturado no mes" value={`R$ ${stats.faturado.toLocaleString("pt-BR")}`} />
-        <Metric title="Recebido no mes" value={`R$ ${stats.recebidos.toLocaleString("pt-BR")}`} />
+        <Metric title="Notas emitidas no mes" value={`R$ ${stats.faturado.toLocaleString("pt-BR")}`} />
+        <Metric title="Recebimento previsto" value={`R$ ${stats.recebidos.toLocaleString("pt-BR")}`} />
       </div>
 
       <Card>
@@ -245,7 +249,7 @@ export default function PlantoesPage() {
                 ))}
               </div>
               <p className="text-sm text-muted-foreground">
-                Total selecionado: <strong>R$ {selectedTotal.toLocaleString("pt-BR")}</strong>. A data do plantao e a data de emissao da nota ficam independentes.
+                Total selecionado: <strong>R$ {selectedTotal.toLocaleString("pt-BR")}</strong>. O valor entra no mês da data de emissão/recebimento, mesmo que os plantões sejam de meses anteriores.
               </p>
             </>
           )}

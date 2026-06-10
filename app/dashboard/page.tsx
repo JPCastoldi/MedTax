@@ -19,7 +19,7 @@ export default function DashboardPage() {
   if (!data) return <p>Carregando dashboard...</p>
 
   const { kpis } = data
-  const faturadoPercent = kpis.valorPrevisto ? (kpis.valorFaturado / kpis.valorPrevisto) * 100 : 0
+  const faturadoPercent = kpis.valorFaturado > 0 ? 100 : 0
 
   return (
     <div className="space-y-6">
@@ -34,7 +34,7 @@ export default function DashboardPage() {
         <CardContent className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="font-semibold">Previsao tributaria do mes</h2>
-            <p className="text-sm text-muted-foreground">Calculada sobre os plantoes cadastrados.</p>
+            <p className="text-sm text-muted-foreground">Calculada sobre notas emitidas/recebidas no mes.</p>
           </div>
           <div className="flex flex-wrap gap-6">
             <strong>Impostos: R$ {kpis.impostosEstimados.toLocaleString("pt-BR")}</strong>
@@ -58,7 +58,7 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             </div>
             <Progress value={faturadoPercent} />
-            <p className="mt-2 text-sm text-muted-foreground">{faturadoPercent.toFixed(0)}% do previsto ja faturado</p>
+            <p className="mt-2 text-sm text-muted-foreground">Valores reconhecidos pela data de emissão/recebimento da nota</p>
           </CardContent>
         </Card>
 

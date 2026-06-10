@@ -252,14 +252,15 @@ export async function dashboardData(userId?: string | null): Promise<DashboardDa
   const [plantoes, notas, hospitais] = await Promise.all([listPlantoes(userId), listNotas(userId), listHospitals(userId)])
   const nowMonth = isoDate(new Date()).slice(0, 7)
   const plantoesMes = plantoes.filter((p) => p.data.startsWith(nowMonth))
+  const notasMes = notas.filter((n) => n.dataEmissao.startsWith(nowMonth) && n.status === "emitida")
   const valorPrevisto = plantoesMes.reduce((sum, p) => sum + p.valor, 0)
-  const valorFaturado = plantoesMes.filter((p) => ["faturado", "recebido"].includes(p.status)).reduce((sum, p) => sum + p.valor, 0)
-  const valorRecebido = plantoesMes.filter((p) => p.status === "recebido").reduce((sum, p) => sum + p.valor, 0)
-  const impostosEstimados = valorPrevisto * 0.15
+  const valorFaturado = notasMes.reduce((sum, n) => sum + n.valor, 0)
+  const valorRecebido = valorFaturado
+  const impostosEstimados = valorFaturado * 0.15
   const ranking = hospitais.map((h) => ({ nome: h.nome, faturado: h.totalFaturado, plantoes: h.plantoesRealizados, cor: h.cor })).sort((a, b) => b.faturado - a.faturado)
   return {
-    kpis: { plantoesMes: plantoesMes.length, valorPrevisto, valorFaturado, valorRecebido, impostosEstimados, liquidoEstimado: valorPrevisto - impostosEstimados },
-    revenueData: [{ month: "Jun", faturamento: valorPrevisto, impostos: impostosEstimados }],
+      kpis: { plantoesMes: plantoesMes.length, valorPrevisto, valorFaturado, valorRecebido, impostosEstimados, liquidoEstimado: valorFaturado - impostosEstimados },
+      revenueData: [{ month: nowMonth, faturamento: valorFaturado, impostos: impostosEstimados }],
     pieData: [
       { name: "Recebido", value: valorRecebido, color: "#10b981" },
       { name: "Faturado", value: Math.max(valorFaturado - valorRecebido, 0), color: "#8b5cf6" },
