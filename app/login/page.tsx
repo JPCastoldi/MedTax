@@ -3,19 +3,18 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { AuthBrand, AuthField, AuthPrimaryButton, AuthShell } from "@/components/auth-shell"
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState("demo@medtax.com")
-  const [password, setPassword] = useState("demo123")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const canSubmit = Boolean(email && password)
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
+    if (!canSubmit) return
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -30,19 +29,17 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader><CardTitle>Entrar no MedTax</CardTitle></CardHeader>
-        <CardContent>
-          <form onSubmit={submit} className="space-y-4">
-            <div className="space-y-2"><Label>Email</Label><Input value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Senha</Label><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button className="w-full">Entrar</Button>
-          </form>
-          <p className="mt-4 text-sm text-muted-foreground">Ainda nao tem conta? <Link className="text-primary" href="/cadastro">Criar conta</Link></p>
-        </CardContent>
-      </Card>
-    </main>
+    <AuthShell>
+      <AuthBrand subtitle="Entre para acompanhar plantoes, notas e impostos." />
+      <form onSubmit={submit} className="flex flex-col gap-4 flex-1">
+        <AuthField label="E-mail" type="email" placeholder="voce@email.com" value={email} onChange={setEmail} />
+        <AuthField label="Senha" type="password" placeholder="Sua senha" value={password} onChange={setPassword} />
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="mt-auto pt-6">
+          <AuthPrimaryButton disabled={!canSubmit}>Entrar</AuthPrimaryButton>
+          <p className="text-center text-[13px] text-slate-500 mt-4">Ainda nao tem conta? <Link className="font-medium text-blue-600" href="/cadastro">Criar conta</Link></p>
+        </div>
+      </form>
+    </AuthShell>
   )
 }
