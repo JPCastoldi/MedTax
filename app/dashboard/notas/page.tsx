@@ -50,7 +50,7 @@ export default function NotasPage() {
               <TableRow>
                 <TableHead>Numero</TableHead>
                 <TableHead>Tomador</TableHead>
-                <TableHead>Emissao</TableHead>
+                <TableHead>Recebimento</TableHead>
                 <TableHead>Competencia</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead>Status</TableHead>

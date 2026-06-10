@@ -256,15 +256,16 @@ export async function dashboardData(userId?: string | null): Promise<DashboardDa
   const valorPrevisto = plantoesMes.reduce((sum, p) => sum + p.valor, 0)
   const valorFaturado = notasMes.reduce((sum, n) => sum + n.valor, 0)
   const valorRecebido = valorFaturado
+  const pendenteNota = plantoesMes.filter((p) => p.status === "realizado").reduce((sum, p) => sum + p.valor, 0)
   const impostosEstimados = valorFaturado * 0.15
   const ranking = hospitais.map((h) => ({ nome: h.nome, faturado: h.totalFaturado, plantoes: h.plantoesRealizados, cor: h.cor })).sort((a, b) => b.faturado - a.faturado)
   return {
-      kpis: { plantoesMes: plantoesMes.length, valorPrevisto, valorFaturado, valorRecebido, impostosEstimados, liquidoEstimado: valorFaturado - impostosEstimados },
+      kpis: { plantoesMes: plantoesMes.length, valorPrevisto, valorFaturado, valorRecebido, pendenteNota, impostosEstimados, liquidoEstimado: valorFaturado - impostosEstimados },
       revenueData: [{ month: nowMonth, faturamento: valorFaturado, impostos: impostosEstimados }],
     pieData: [
-      { name: "Recebido", value: valorRecebido, color: "#10b981" },
-      { name: "Faturado", value: Math.max(valorFaturado - valorRecebido, 0), color: "#8b5cf6" },
-      { name: "A faturar", value: Math.max(valorPrevisto - valorFaturado, 0), color: "#f59e0b" },
+      { name: "Recebimento", value: valorRecebido, color: "#10b981" },
+      { name: "Producao do mes", value: valorPrevisto, color: "#3b82f6" },
+      { name: "Pendente de nota", value: pendenteNota, color: "#f59e0b" },
     ],
     proximosPlantoes: plantoes.filter((p) => p.status === "agendado").slice(0, 4),
     notasPendentes: notas.filter((n) => n.status === "emitida").slice(0, 4),

@@ -25,9 +25,9 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-4">
         <Metric icon={CalendarDays} title="Plantoes do mes" value={String(kpis.plantoesMes)} />
-        <Metric icon={Wallet} title="Valor previsto" value={`R$ ${kpis.valorPrevisto.toLocaleString("pt-BR")}`} />
-        <Metric icon={FileText} title="Valor faturado" value={`R$ ${kpis.valorFaturado.toLocaleString("pt-BR")}`} />
-        <Metric icon={Wallet} title="Valor recebido" value={`R$ ${kpis.valorRecebido.toLocaleString("pt-BR")}`} />
+        <Metric icon={Wallet} title="Producao do mes" value={`R$ ${kpis.valorPrevisto.toLocaleString("pt-BR")}`} />
+        <Metric icon={FileText} title="Recebimento por notas" value={`R$ ${kpis.valorRecebido.toLocaleString("pt-BR")}`} />
+        <Metric icon={Wallet} title="Pendente de nota" value={`R$ ${kpis.pendenteNota.toLocaleString("pt-BR")}`} />
       </div>
 
       <Card>

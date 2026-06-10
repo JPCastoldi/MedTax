@@ -50,6 +50,7 @@ export type DashboardData = {
     valorPrevisto: number
     valorFaturado: number
     valorRecebido: number
+    pendenteNota: number
     impostosEstimados: number
     liquidoEstimado: number
   }

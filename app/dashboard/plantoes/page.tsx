@@ -32,7 +32,7 @@ export default function PlantoesPage() {
   const [currentDate, setCurrentDate] = useState(startOfMonth(today))
   const [billingHospitalId, setBillingHospitalId] = useState("")
   const [billingPlantaoIds, setBillingPlantaoIds] = useState<string[]>([])
-  const [dataEmissao, setDataEmissao] = useState(format(today, "yyyy-MM-dd"))
+  const [dataRecebimento, setDataRecebimento] = useState(format(today, "yyyy-MM-dd"))
   const [competencia, setCompetencia] = useState(format(today, "yyyy-MM"))
 
   async function load() {
@@ -111,7 +111,7 @@ export default function PlantoesPage() {
       body: JSON.stringify({
         hospitalId: selectedBillingGroup.hospital.id,
         plantaoIds: billingPlantaoIds,
-        dataEmissao,
+        dataEmissao: dataRecebimento,
         competencia: `${month}/${year}`,
       }),
     })
@@ -137,11 +137,12 @@ export default function PlantoesPage() {
 
   const monthPlantoes = plantoes.filter((plantao) => plantao.data.startsWith(format(currentDate, "yyyy-MM")))
   const monthNotas = notas.filter((nota) => nota.dataEmissao.startsWith(format(currentDate, "yyyy-MM")))
+  const pendentesDoMes = monthPlantoes.filter((plantao) => plantao.status === "realizado")
   const stats = {
     total: monthPlantoes.length,
     previsto: monthPlantoes.reduce((sum, p) => sum + p.valor, 0),
-    faturado: monthNotas.filter((nota) => nota.status === "emitida").reduce((sum, nota) => sum + nota.valor, 0),
-    recebidos: monthNotas.filter((nota) => nota.status === "emitida").reduce((sum, nota) => sum + nota.valor, 0),
+    recebimento: monthNotas.filter((nota) => nota.status === "emitida").reduce((sum, nota) => sum + nota.valor, 0),
+    pendenteNota: pendentesDoMes.reduce((sum, plantao) => sum + plantao.valor, 0),
   }
 
   const selectedTotal = selectedBillingGroup?.plantoes
@@ -169,9 +170,9 @@ export default function PlantoesPage() {
 
       <div className="grid gap-4 md:grid-cols-4">
         <Metric title="Plantoes no mes" value={String(stats.total)} />
-        <Metric title="Previsto no mes" value={`R$ ${stats.previsto.toLocaleString("pt-BR")}`} />
-        <Metric title="Notas emitidas no mes" value={`R$ ${stats.faturado.toLocaleString("pt-BR")}`} />
-        <Metric title="Recebimento previsto" value={`R$ ${stats.recebidos.toLocaleString("pt-BR")}`} />
+        <Metric title="Producao do mes" value={`R$ ${stats.previsto.toLocaleString("pt-BR")}`} />
+        <Metric title="Recebimento por notas" value={`R$ ${stats.recebimento.toLocaleString("pt-BR")}`} />
+        <Metric title="Pendente de nota" value={`R$ ${stats.pendenteNota.toLocaleString("pt-BR")}`} />
       </div>
 
       <Card>
@@ -227,8 +228,8 @@ export default function PlantoesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Field label="Data de emissao" type="date" value={dataEmissao} onChange={setDataEmissao} />
-                <Field label="Competencia da nota" type="month" value={competencia} onChange={setCompetencia} />
+                <Field label="Data de recebimento" type="date" value={dataRecebimento} onChange={setDataRecebimento} />
+                <Field label="Competencia dos servicos" type="month" value={competencia} onChange={setCompetencia} />
                 <div className="flex items-end">
                   <Button className="w-full" onClick={gerarNota}><FileText className="mr-2 h-4 w-4" />Gerar nota</Button>
                 </div>
@@ -249,7 +250,7 @@ export default function PlantoesPage() {
                 ))}
               </div>
               <p className="text-sm text-muted-foreground">
-                Total selecionado: <strong>R$ {selectedTotal.toLocaleString("pt-BR")}</strong>. O valor entra no mês da data de emissão/recebimento, mesmo que os plantões sejam de meses anteriores.
+                Total selecionado: <strong>R$ {selectedTotal.toLocaleString("pt-BR")}</strong>. O valor entra no mês da data de recebimento, mesmo que os plantões sejam de meses anteriores.
               </p>
             </>
           )}
