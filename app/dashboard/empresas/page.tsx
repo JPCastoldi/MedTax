@@ -72,19 +72,11 @@ export default function EmpresasPage() {
     })
   }
 
-  const fatorMedio = empresas.length ? empresas.reduce((sum, empresa) => sum + empresa.fatorR, 0) / empresas.length : 0
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Empresas</h1>
         <p className="text-muted-foreground">Cadastre CNPJs, regimes tributarios e Fator R.</p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Metric title="Empresas" value={String(empresas.length)} />
-        <Metric title="Ativas" value={String(empresas.filter((empresa) => empresa.situacao === "ativa").length)} />
-        <Metric title="Fator R medio" value={`${fatorMedio.toFixed(1)}%`} />
       </div>
 
       <Card>
@@ -155,10 +147,6 @@ export default function EmpresasPage() {
       </div>
     </div>
   )
-}
-
-function Metric({ title, value }: { title: string; value: string }) {
-  return <Card><CardHeader><CardTitle className="text-sm text-muted-foreground">{title}</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{value}</CardContent></Card>
 }
 
 function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {

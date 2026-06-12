@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { Building2, CalendarDays, ChevronRight, FileText, Wallet } from "lucide-react"
+import { Building2, ChevronRight, FileText, Wallet } from "lucide-react"
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,25 +19,26 @@ export default function DashboardPage() {
   if (!data) return <p>Carregando dashboard...</p>
 
   const { kpis } = data
-  const faturadoPercent = kpis.valorFaturado > 0 ? 100 : 0
+  const totalStatus = kpis.valorRecebido + kpis.valorAReceber
+  const recebidoPercent = totalStatus > 0 ? (kpis.valorRecebido / totalStatus) * 100 : 0
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-4">
-        <Metric icon={CalendarDays} title="Plantoes do mes" value={String(kpis.plantoesMes)} />
-        <Metric icon={Wallet} title="A receber no mes" value={`R$ ${kpis.valorRecebido.toLocaleString("pt-BR")}`} />
-        <Metric icon={Wallet} title="Pendente de nota" value={`R$ ${kpis.pendenteNota.toLocaleString("pt-BR")}`} />
-        <Metric icon={FileText} title="Impostos estimados" value={`R$ ${kpis.impostosEstimados.toLocaleString("pt-BR")}`} />
+        <Metric icon={Wallet} title="Recebido no mes" value={`R$ ${kpis.valorRecebido.toLocaleString("pt-BR")}`} />
+        <Metric icon={Wallet} title="A receber no mes" value={`R$ ${kpis.valorAReceber.toLocaleString("pt-BR")}`} />
+        <Metric icon={FileText} title={kpis.tributoLabel} value={`R$ ${kpis.impostosEstimados.toLocaleString("pt-BR")}`} />
+        <Metric icon={Wallet} title="Liquido estimado" value={`R$ ${kpis.liquidoEstimado.toLocaleString("pt-BR")}`} />
       </div>
 
       <Card>
         <CardContent className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="font-semibold">Previsao tributaria do mes</h2>
-            <p className="text-sm text-muted-foreground">Calculada sobre notas emitidas/recebidas no mes.</p>
+            <p className="text-sm text-muted-foreground">Calculada sobre plantoes marcados como recebidos no mes.</p>
           </div>
           <div className="flex flex-wrap gap-6">
-            <strong>Impostos: R$ {kpis.impostosEstimados.toLocaleString("pt-BR")}</strong>
+            <strong>{kpis.tributoLabel}: R$ {kpis.impostosEstimados.toLocaleString("pt-BR")}</strong>
             <strong>Liquido: R$ {kpis.liquidoEstimado.toLocaleString("pt-BR")}</strong>
           </div>
         </CardContent>
@@ -57,17 +58,18 @@ export default function DashboardPage() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <Progress value={faturadoPercent} />
-            <p className="mt-2 text-sm text-muted-foreground">Valores reconhecidos pela data de emissão/recebimento da nota</p>
+            <Progress value={recebidoPercent} />
+            <p className="mt-2 text-sm text-muted-foreground">Recebido so entra quando o plantao e marcado como recebido.</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Proximos plantoes</CardTitle>
+            <CardTitle>Plantoes pendentes</CardTitle>
             <Button variant="ghost" size="sm" asChild><Link href="/dashboard/plantoes">Agenda <ChevronRight className="ml-1 h-4 w-4" /></Link></Button>
           </CardHeader>
           <CardContent className="space-y-3">
+            {data.proximosPlantoes.length === 0 && <p className="text-sm text-muted-foreground">Nenhum plantao pendente.</p>}
             {data.proximosPlantoes.map((plantao) => (
               <div key={plantao.id} className="rounded-md border p-3">
                 <p className="font-medium">{plantao.hospitalNome}</p>

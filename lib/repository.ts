@@ -48,11 +48,12 @@ function isoDate(date: Date | string) {
 
 function addHospitalStats(hospital: Omit<Hospital, "totalFaturado" | "plantoesRealizados" | "mediaAtraso" | "ultimoPagamento">, plantoes: Plantao[], notas: NotaFiscal[]): Hospital {
   const hospitalPlantoes = plantoes.filter((p) => p.hospitalId === hospital.id)
+  const receivedPlantoes = hospitalPlantoes.filter((p) => p.status === "recebido")
   const paidNotes = notas.filter((n) => n.hospitalId === hospital.id && n.status === "emitida")
   return {
     ...hospital,
-    totalFaturado: paidNotes.reduce((sum, n) => sum + n.valor, 0),
-    plantoesRealizados: hospitalPlantoes.filter((p) => p.status !== "agendado").length,
+    totalFaturado: receivedPlantoes.reduce((sum, p) => sum + p.valor, 0),
+    plantoesRealizados: hospitalPlantoes.length,
     mediaAtraso: 0,
     ultimoPagamento: paidNotes[0]?.dataEmissao ?? "-",
   }
@@ -217,7 +218,7 @@ export async function gerarNotaPorHospital(
 ) {
   const plantoes = (await listPlantoes(userId)).filter((p) => {
     const belongsToHospital = p.hospitalId === hospitalId
-    const isReadyToBill = p.status === "realizado"
+    const isReadyToBill = p.status === "realizado" || p.status === "faturado"
     const wasSelected = !options?.plantaoIds?.length || options.plantaoIds.includes(p.id)
     return belongsToHospital && isReadyToBill && wasSelected
   })
@@ -249,24 +250,32 @@ export async function gerarNotaPorHospital(
 }
 
 export async function dashboardData(userId?: string | null): Promise<DashboardData> {
-  const [plantoes, notas, hospitais] = await Promise.all([listPlantoes(userId), listNotas(userId), listHospitals(userId)])
+  const [plantoes, notas, hospitais, empresas] = await Promise.all([listPlantoes(userId), listNotas(userId), listHospitals(userId), listEmpresas(userId)])
   const nowMonth = isoDate(new Date()).slice(0, 7)
   const plantoesMes = plantoes.filter((p) => p.data.startsWith(nowMonth))
   const notasMes = notas.filter((n) => n.dataEmissao.startsWith(nowMonth) && n.status === "emitida")
+  const recebidosMes = plantoesMes.filter((p) => p.status === "recebido")
+  const faturadosMes = plantoesMes.filter((p) => p.status === "faturado")
+  const pendentesMes = plantoesMes.filter((p) => p.status === "realizado")
   const valorPrevisto = plantoesMes.reduce((sum, p) => sum + p.valor, 0)
   const valorFaturado = notasMes.reduce((sum, n) => sum + n.valor, 0)
-  const valorRecebido = valorFaturado
-  const pendenteNota = plantoesMes.filter((p) => p.status === "realizado").reduce((sum, p) => sum + p.valor, 0)
-  const impostosEstimados = valorFaturado * 0.15
+  const valorRecebido = recebidosMes.reduce((sum, p) => sum + p.valor, 0)
+  const valorAReceber = faturadosMes.reduce((sum, p) => sum + p.valor, 0)
+  const pendenteNota = pendentesMes.reduce((sum, p) => sum + p.valor, 0)
+  const regime = empresas[0]?.regimeTributario ?? "Simples Nacional"
+  const isSimples = regime.toLowerCase().includes("simples")
+  const tributoLabel = isSimples ? "DAS estimado" : "Impostos estimados"
+  const taxRate = isSimples ? 0.06 : 0.1333
+  const impostosEstimados = valorRecebido * taxRate
   const ranking = hospitais.map((h) => ({ nome: h.nome, faturado: h.totalFaturado, plantoes: h.plantoesRealizados, cor: h.cor })).sort((a, b) => b.faturado - a.faturado)
   return {
-      kpis: { plantoesMes: plantoesMes.length, valorPrevisto, valorFaturado, valorRecebido, pendenteNota, impostosEstimados, liquidoEstimado: valorFaturado - impostosEstimados },
-      revenueData: [{ month: nowMonth, faturamento: valorFaturado, impostos: impostosEstimados }],
+      kpis: { plantoesMes: plantoesMes.length, valorPrevisto, valorFaturado, valorRecebido, valorAReceber, pendenteNota, impostosEstimados, liquidoEstimado: valorRecebido - impostosEstimados, tributoLabel },
+      revenueData: [{ month: nowMonth, faturamento: valorRecebido, impostos: impostosEstimados }],
     pieData: [
-      { name: "Recebimento", value: valorRecebido, color: "#10b981" },
-      { name: "Pendente de nota", value: pendenteNota, color: "#f59e0b" },
+      { name: "Recebido no mes", value: valorRecebido, color: "#10b981" },
+      { name: "A receber", value: valorAReceber, color: "#f59e0b" },
     ],
-    proximosPlantoes: plantoes.filter((p) => p.status === "agendado").slice(0, 4),
+    proximosPlantoes: plantoes.filter((p) => p.status === "realizado").slice(0, 4),
     notasPendentes: notas.filter((n) => n.status === "emitida").slice(0, 4),
     hospitalRanking: ranking,
   }

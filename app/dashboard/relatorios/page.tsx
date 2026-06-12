@@ -51,12 +51,12 @@ export default function RelatoriosPage() {
   function exportCsv() {
     if (!report) return
     const rows = tipo === "notas"
-      ? report.notas.map((nota) => [nota.numero, nota.tomador, nota.competencia, nota.valor, nota.status])
+      ? report.notas.map((nota) => [nota.numero, nota.tomador, nota.dataEmissao, nota.competencia, nota.valor, nota.status])
       : tipo === "empresas"
         ? report.empresas.map((empresa) => [empresa.cnpj, empresa.razaoSocial, empresa.regimeTributario, empresa.fatorR, empresa.situacao])
-        : report.plantoes.map((plantao) => [plantao.data, plantao.hospitalNome, plantao.especialidade, plantao.valor, plantao.status])
+        : report.plantoes.map((plantao) => [plantao.data, plantao.hospitalNome, plantao.especialidade, plantao.valor, labelStatus(plantao.status)])
     const header = tipo === "notas"
-      ? ["numero", "tomador", "competencia", "valor", "status"]
+      ? ["numero", "tomador", "dataEmissao", "competencia", "valor", "status"]
       : tipo === "empresas"
         ? ["cnpj", "razaoSocial", "regime", "fatorR", "situacao"]
         : ["data", "hospital", "especialidade", "valor", "status"]
@@ -97,7 +97,7 @@ export default function RelatoriosPage() {
         <Metric title="Hospitais" value={String(report.hospitais.length)} />
         <Metric title="Plantoes" value={String(report.plantoes.length)} />
         <Metric title="Notas" value={String(report.notas.length)} />
-        <Metric title="Faturamento" value={`R$ ${report.dashboard.kpis.valorPrevisto.toLocaleString("pt-BR")}`} />
+        <Metric title="Recebido no mes" value={`R$ ${report.dashboard.kpis.valorRecebido.toLocaleString("pt-BR")}`} />
       </div>
 
       <Card>
@@ -121,9 +121,63 @@ export default function RelatoriosPage() {
           {report.hospitais.map((hospital) => (
             <div key={hospital.id} className="rounded-md border p-3">
               <p className="font-medium">{hospital.nome}</p>
-              <p className="text-sm text-muted-foreground">{hospital.plantoesRealizados} plantoes realizados | R$ {hospital.totalFaturado.toLocaleString("pt-BR")} faturados</p>
+              <p className="text-sm text-muted-foreground">{hospital.plantoesRealizados} plantoes | R$ {hospital.totalFaturado.toLocaleString("pt-BR")} recebidos</p>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Previa do relatorio</CardTitle></CardHeader>
+        <CardContent className="overflow-x-auto">
+          {tipo === "plantoes" && (
+            <table className="w-full text-sm">
+              <thead><tr className="border-b text-left"><th className="py-2">Data</th><th>Hospital</th><th>Especialidade</th><th>Valor</th><th>Status</th></tr></thead>
+              <tbody>
+                {report.plantoes.map((plantao) => (
+                  <tr key={plantao.id} className="border-b last:border-0">
+                    <td className="py-2">{plantao.data}</td>
+                    <td>{plantao.hospitalNome}</td>
+                    <td>{plantao.especialidade}</td>
+                    <td>R$ {plantao.valor.toLocaleString("pt-BR")}</td>
+                    <td>{labelStatus(plantao.status)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {tipo === "notas" && (
+            <table className="w-full text-sm">
+              <thead><tr className="border-b text-left"><th className="py-2">Numero</th><th>Tomador</th><th>Emissao</th><th>Competencia</th><th>Valor</th></tr></thead>
+              <tbody>
+                {report.notas.map((nota) => (
+                  <tr key={nota.id} className="border-b last:border-0">
+                    <td className="py-2">{nota.numero}</td>
+                    <td>{nota.tomador}</td>
+                    <td>{nota.dataEmissao}</td>
+                    <td>{nota.competencia}</td>
+                    <td>R$ {nota.valor.toLocaleString("pt-BR")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {tipo === "empresas" && (
+            <table className="w-full text-sm">
+              <thead><tr className="border-b text-left"><th className="py-2">CNPJ</th><th>Razao social</th><th>Regime</th><th>Fator R</th><th>Situacao</th></tr></thead>
+              <tbody>
+                {report.empresas.map((empresa) => (
+                  <tr key={empresa.id} className="border-b last:border-0">
+                    <td className="py-2">{empresa.cnpj}</td>
+                    <td>{empresa.razaoSocial}</td>
+                    <td>{empresa.regimeTributario}</td>
+                    <td>{empresa.fatorR}%</td>
+                    <td>{empresa.situacao}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -132,4 +186,10 @@ export default function RelatoriosPage() {
 
 function Metric({ title, value }: { title: string; value: string }) {
   return <Card><CardHeader><CardTitle className="text-sm text-muted-foreground">{title}</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{value}</CardContent></Card>
+}
+
+function labelStatus(status: Plantao["status"]) {
+  if (status === "recebido") return "Recebido"
+  if (status === "faturado") return "Faturado"
+  return "Pendente"
 }

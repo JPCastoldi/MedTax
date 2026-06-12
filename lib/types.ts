@@ -50,9 +50,11 @@ export type DashboardData = {
     valorPrevisto: number
     valorFaturado: number
     valorRecebido: number
+    valorAReceber: number
     pendenteNota: number
     impostosEstimados: number
     liquidoEstimado: number
+    tributoLabel: string
   }
   revenueData: Array<{ month: string; faturamento: number; impostos: number }>
   pieData: Array<{ name: string; value: number; color: string }>

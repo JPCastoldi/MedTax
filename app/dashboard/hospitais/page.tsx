@@ -41,10 +41,17 @@ export default function HospitaisPage() {
 
   async function save() {
     const url = editingId ? `/api/hospitais/${editingId}` : "/api/hospitais"
+    const payload = {
+      ...form,
+      cnpj: form.cnpj || `hospital-${editingId ?? Date.now()}`,
+      contatoFinanceiro: "",
+      telefone: "",
+      prazoMedioPagamento: 30,
+    }
     await fetch(url, {
       method: editingId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     })
     setForm(emptyForm)
     setEditingId(null)
@@ -77,31 +84,12 @@ export default function HospitaisPage() {
         <p className="text-muted-foreground">Cadastro persistido de hospitais e clinicas.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader><CardTitle>Total</CardTitle></CardHeader>
-          <CardContent className="text-3xl font-bold">{hospitais.length}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Faturamento</CardTitle></CardHeader>
-          <CardContent className="text-3xl font-bold">R$ {hospitais.reduce((s, h) => s + h.totalFaturado, 0).toLocaleString("pt-BR")}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Plantoes</CardTitle></CardHeader>
-          <CardContent className="text-3xl font-bold">{hospitais.reduce((s, h) => s + h.plantoesRealizados, 0)}</CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader><CardTitle>{editingId ? "Editar hospital" : "Novo hospital"}</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-4">
           <Field label="Nome" value={form.nome} onChange={(nome) => setForm({ ...form, nome })} />
-          <Field label="CNPJ" value={form.cnpj} onChange={(cnpj) => setForm({ ...form, cnpj })} />
           <Field label="Cidade" value={form.cidade} onChange={(cidade) => setForm({ ...form, cidade })} />
           <Field label="UF" value={form.estado} onChange={(estado) => setForm({ ...form, estado })} />
-          <Field label="Contato financeiro" value={form.contatoFinanceiro} onChange={(contatoFinanceiro) => setForm({ ...form, contatoFinanceiro })} />
-          <Field label="Telefone" value={form.telefone} onChange={(telefone) => setForm({ ...form, telefone })} />
-          <Field label="Prazo pagamento" type="number" value={String(form.prazoMedioPagamento)} onChange={(prazoMedioPagamento) => setForm({ ...form, prazoMedioPagamento: Number(prazoMedioPagamento) })} />
           <div className="space-y-2">
             <Label>Cor</Label>
             <Input type="color" value={form.cor} onChange={(event) => setForm({ ...form, cor: event.target.value })} />
@@ -131,9 +119,8 @@ export default function HospitaisPage() {
               <Button variant="ghost" size="icon" onClick={() => remove(hospital.id)}><Trash2 className="h-4 w-4" /></Button>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">{hospital.cnpj}</p>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <span>R$ {hospital.totalFaturado.toLocaleString("pt-BR")}</span>
+                <span>Recebido: R$ {hospital.totalFaturado.toLocaleString("pt-BR")}</span>
                 <span>{hospital.plantoesRealizados} plantoes</span>
               </div>
               <Button variant="outline" className="w-full" onClick={() => edit(hospital)}>Editar</Button>
