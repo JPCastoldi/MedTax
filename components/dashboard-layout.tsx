@@ -48,12 +48,19 @@ const navigation = [
 
 function initials(name: string) {
   return name
+    .replace(/^dr\.?\s+/i, "")
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0])
     .join("")
     .toUpperCase() || "U"
+}
+
+function doctorName(name: string) {
+  const cleanName = name.trim()
+  if (!cleanName || cleanName === "Carregando...") return cleanName
+  return /^dr\.?\s+/i.test(cleanName) ? cleanName : `Dr. ${cleanName}`
 }
 
 function SidebarContent({
@@ -66,6 +73,7 @@ function SidebarContent({
   user: CurrentUser
 }) {
   const pathname = usePathname()
+  const displayName = doctorName(user.name)
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" })
@@ -122,7 +130,7 @@ function SidebarContent({
               </Avatar>
               {!collapsed && (
                 <div className="flex flex-col items-start text-left">
-                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="text-sm font-medium">{displayName}</span>
                   <span className="text-xs text-sidebar-foreground/60">{user.email}</span>
                 </div>
               )}
@@ -151,6 +159,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState<CurrentUser>({ name: "Carregando...", email: "" })
+  const displayName = doctorName(user.name)
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -181,7 +190,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </SheetTrigger>
             </Sheet>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-semibold text-foreground">Bem-vindo, {user.name}</h1>
+              <h1 className="text-lg font-semibold text-foreground">Bem-vindo, {displayName}</h1>
               <p className="text-sm text-muted-foreground">Gerencie sua vida fiscal com simplicidade</p>
             </div>
           </div>

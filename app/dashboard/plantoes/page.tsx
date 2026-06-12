@@ -56,6 +56,7 @@ export default function PlantoesPage() {
   const [competencia, setCompetencia] = useState(format(today, "yyyy-MM"))
   const [bulkHospitalId, setBulkHospitalId] = useState("")
   const [bulkStatus, setBulkStatus] = useState<UiStatus>("faturado")
+  const [billingMessage, setBillingMessage] = useState("")
 
   async function load() {
     const [hospitaisResponse, plantoesResponse, notasResponse] = await Promise.all([
@@ -84,16 +85,20 @@ export default function PlantoesPage() {
   const monthPlantoes = useMemo(() => plantoes.filter((plantao) => plantao.data.startsWith(monthKey)), [plantoes, monthKey])
   const selectedDayPlantoes = plantoes.filter((plantao) => plantao.data === selectedDay)
 
-  const faturadosPorHospital = useMemo(() => {
+  const prontosParaNotaPorHospital = useMemo(() => {
     return hospitais
       .map((hospital) => ({
         hospital,
-        plantoes: plantoes.filter((plantao) => plantao.hospitalId === hospital.id && plantao.status === "faturado"),
+        plantoes: plantoes.filter((plantao) =>
+          plantao.hospitalId === hospital.id &&
+          !plantao.notaFiscalId &&
+          (plantao.status === "realizado" || plantao.status === "faturado")
+        ),
       }))
       .filter((item) => item.plantoes.length > 0)
   }, [hospitais, plantoes])
 
-  const selectedBillingGroup = faturadosPorHospital.find((item) => item.hospital.id === billingHospitalId) ?? faturadosPorHospital[0]
+  const selectedBillingGroup = prontosParaNotaPorHospital.find((item) => item.hospital.id === billingHospitalId) ?? prontosParaNotaPorHospital[0]
 
   useEffect(() => {
     if (!selectedBillingGroup) {
@@ -131,9 +136,10 @@ export default function PlantoesPage() {
   }
 
   async function gerarNota() {
+    setBillingMessage("")
     if (!selectedBillingGroup || billingPlantaoIds.length === 0) return
     const [year, month] = competencia.split("-")
-    await fetch("/api/notas", {
+    const response = await fetch("/api/notas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -143,6 +149,17 @@ export default function PlantoesPage() {
         competencia: `${month}/${year}`,
       }),
     })
+    if (!response.ok) {
+      const data = await response.json().catch(() => null)
+      setBillingMessage(data?.error ?? "Nao foi possivel gerar a nota.")
+      return
+    }
+    const nota = await response.json()
+    if (!nota) {
+      setBillingMessage("Nenhum plantao disponivel para gerar nota neste hospital.")
+      return
+    }
+    setBillingMessage("Nota gerada com sucesso. O valor fica como a receber ate marcar os plantoes como recebidos.")
     await load()
   }
 
@@ -277,8 +294,8 @@ export default function PlantoesPage() {
       <Card>
         <CardHeader><CardTitle>Faturamento por hospital</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          {faturadosPorHospital.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Marque plantoes como faturados para gerar uma nota por hospital. A nota emitida nao considera pagamento.</p>
+          {prontosParaNotaPorHospital.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum plantao pendente ou faturado sem nota. A nota emitida nao considera pagamento.</p>
           ) : (
             <>
               <div className="grid gap-4 md:grid-cols-4">
@@ -287,7 +304,7 @@ export default function PlantoesPage() {
                   <Select value={selectedBillingGroup?.hospital.id} onValueChange={(hospitalId) => { setBillingHospitalId(hospitalId); setBillingPlantaoIds([]) }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {faturadosPorHospital.map(({ hospital, plantoes }) => (
+                      {prontosParaNotaPorHospital.map(({ hospital, plantoes }) => (
                         <SelectItem key={hospital.id} value={hospital.id}>{hospital.nome} ({plantoes.length})</SelectItem>
                       ))}
                     </SelectContent>
@@ -296,9 +313,10 @@ export default function PlantoesPage() {
                 <Field label="Data de emissao da nota" type="date" value={dataEmissao} onChange={setDataEmissao} />
                 <Field label="Competencia dos servicos" type="month" value={competencia} onChange={setCompetencia} />
                 <div className="flex items-end">
-                  <Button className="w-full" onClick={gerarNota}><FileText className="mr-2 h-4 w-4" />Gerar nota</Button>
+                  <Button className="w-full" disabled={!billingPlantaoIds.length} onClick={gerarNota}><FileText className="mr-2 h-4 w-4" />Gerar nota</Button>
                 </div>
               </div>
+              {billingMessage && <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{billingMessage}</p>}
 
               <div className="rounded-md border">
                 {selectedBillingGroup?.plantoes.map((plantao) => (
@@ -307,7 +325,7 @@ export default function PlantoesPage() {
                       <input type="checkbox" checked={billingPlantaoIds.includes(plantao.id)} onChange={() => toggleBillingPlantao(plantao.id)} />
                       <span>
                         <strong>{format(parseISO(plantao.data), "dd/MM/yyyy")}</strong>
-                        <span className="ml-2 text-sm text-muted-foreground">{plantao.especialidade} | {plantao.horaInicio}-{plantao.horaFim}</span>
+                        <span className="ml-2 text-sm text-muted-foreground">{plantao.especialidade} | {plantao.horaInicio}-{plantao.horaFim} | {statusLabels[apiToUiStatus(plantao.status)]}</span>
                       </span>
                     </span>
                     <span className="font-semibold">R$ {plantao.valor.toLocaleString("pt-BR")}</span>

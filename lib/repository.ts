@@ -219,8 +219,9 @@ export async function gerarNotaPorHospital(
   const plantoes = (await listPlantoes(userId)).filter((p) => {
     const belongsToHospital = p.hospitalId === hospitalId
     const isReadyToBill = p.status === "realizado" || p.status === "faturado"
+    const hasNoInvoice = !p.notaFiscalId
     const wasSelected = !options?.plantaoIds?.length || options.plantaoIds.includes(p.id)
-    return belongsToHospital && isReadyToBill && wasSelected
+    return belongsToHospital && isReadyToBill && hasNoInvoice && wasSelected
   })
   if (plantoes.length === 0) return null
   const hospital = (await listHospitals(userId)).find((h) => h.id === hospitalId)

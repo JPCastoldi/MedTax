@@ -3,10 +3,8 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { Building2, ChevronRight, FileText, Wallet } from "lucide-react"
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
 import type { DashboardData } from "@/lib/types"
 
 export default function DashboardPage() {
@@ -19,16 +17,13 @@ export default function DashboardPage() {
   if (!data) return <p>Carregando dashboard...</p>
 
   const { kpis } = data
-  const totalStatus = kpis.valorRecebido + kpis.valorAReceber
-  const recebidoPercent = totalStatus > 0 ? (kpis.valorRecebido / totalStatus) * 100 : 0
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Metric icon={Wallet} title="Recebido no mes" value={`R$ ${kpis.valorRecebido.toLocaleString("pt-BR")}`} />
         <Metric icon={Wallet} title="A receber no mes" value={`R$ ${kpis.valorAReceber.toLocaleString("pt-BR")}`} />
-        <Metric icon={FileText} title={kpis.tributoLabel} value={`R$ ${kpis.impostosEstimados.toLocaleString("pt-BR")}`} />
-        <Metric icon={Wallet} title="Liquido estimado" value={`R$ ${kpis.liquidoEstimado.toLocaleString("pt-BR")}`} />
+        <Metric icon={FileText} title="Imposto a pagar" value={`R$ ${kpis.impostosEstimados.toLocaleString("pt-BR")}`} />
       </div>
 
       <Card>
@@ -45,21 +40,19 @@ export default function DashboardPage() {
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card>
-          <CardHeader><CardTitle>Status financeiro</CardTitle></CardHeader>
+        <Card className="border-emerald-200 bg-emerald-50">
+          <CardHeader><CardTitle>Liquido estimado</CardTitle></CardHeader>
           <CardContent>
-            <div className="h-56">
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie data={data.pieData} dataKey="value" innerRadius={50} outerRadius={80}>
-                    {data.pieData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => `R$ ${value.toLocaleString("pt-BR")}`} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="text-4xl font-bold text-emerald-700">
+              R$ {kpis.liquidoEstimado.toLocaleString("pt-BR")}
             </div>
-            <Progress value={recebidoPercent} />
-            <p className="mt-2 text-sm text-muted-foreground">Recebido so entra quando o plantao e marcado como recebido.</p>
+            <p className="mt-3 text-sm text-emerald-800">
+              Recebido no mes menos {kpis.tributoLabel.toLowerCase()}.
+            </p>
+            <div className="mt-5 grid gap-2 text-sm">
+              <div className="flex justify-between"><span>Recebido</span><strong>R$ {kpis.valorRecebido.toLocaleString("pt-BR")}</strong></div>
+              <div className="flex justify-between"><span>Imposto a pagar</span><strong>R$ {kpis.impostosEstimados.toLocaleString("pt-BR")}</strong></div>
+            </div>
           </CardContent>
         </Card>
 
