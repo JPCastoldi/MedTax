@@ -256,7 +256,12 @@ export async function dashboardData(userId?: string | null): Promise<DashboardDa
   const plantoesMes = plantoes.filter((p) => p.data.startsWith(nowMonth))
   const notasMes = notas.filter((n) => n.dataEmissao.startsWith(nowMonth) && n.status === "emitida")
   const notasById = new Map(notas.map((nota) => [nota.id, nota]))
-  const recebidosMes = plantoesMes.filter((p) => p.status === "recebido")
+  const recebidosMes = plantoes.filter((p) => {
+    if (p.status !== "recebido") return false
+    const nota = p.notaFiscalId ? notasById.get(p.notaFiscalId) : null
+    if (nota) return nota.status === "emitida" && nota.dataEmissao.startsWith(nowMonth)
+    return p.data.startsWith(nowMonth)
+  })
   const faturadosMes = plantoes.filter((p) => {
     if (p.status !== "faturado") return false
     const nota = p.notaFiscalId ? notasById.get(p.notaFiscalId) : null
