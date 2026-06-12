@@ -255,8 +255,14 @@ export async function dashboardData(userId?: string | null): Promise<DashboardDa
   const nowMonth = isoDate(new Date()).slice(0, 7)
   const plantoesMes = plantoes.filter((p) => p.data.startsWith(nowMonth))
   const notasMes = notas.filter((n) => n.dataEmissao.startsWith(nowMonth) && n.status === "emitida")
+  const notasById = new Map(notas.map((nota) => [nota.id, nota]))
   const recebidosMes = plantoesMes.filter((p) => p.status === "recebido")
-  const faturadosMes = plantoesMes.filter((p) => p.status === "faturado")
+  const faturadosMes = plantoes.filter((p) => {
+    if (p.status !== "faturado") return false
+    const nota = p.notaFiscalId ? notasById.get(p.notaFiscalId) : null
+    if (nota) return nota.status === "emitida" && nota.dataEmissao.startsWith(nowMonth)
+    return p.data.startsWith(nowMonth)
+  })
   const pendentesMes = plantoesMes.filter((p) => p.status === "realizado")
   const valorPrevisto = plantoesMes.reduce((sum, p) => sum + p.valor, 0)
   const valorFaturado = notasMes.reduce((sum, n) => sum + n.valor, 0)

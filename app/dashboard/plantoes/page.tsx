@@ -92,7 +92,7 @@ export default function PlantoesPage() {
         plantoes: plantoes.filter((plantao) =>
           plantao.hospitalId === hospital.id &&
           !plantao.notaFiscalId &&
-          (plantao.status === "realizado" || plantao.status === "faturado")
+          plantao.status === "faturado"
         ),
       }))
       .filter((item) => item.plantoes.length > 0)
@@ -295,7 +295,7 @@ export default function PlantoesPage() {
         <CardHeader><CardTitle>Faturamento por hospital</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {prontosParaNotaPorHospital.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum plantao pendente ou faturado sem nota. A nota emitida nao considera pagamento.</p>
+            <p className="text-sm text-muted-foreground">Mude o status do plantao para faturado para gerar nota por hospital. A nota emitida nao considera pagamento.</p>
           ) : (
             <>
               <div className="grid gap-4 md:grid-cols-4">
