@@ -101,7 +101,7 @@ export default function RelatoriosPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Faturamento por hospital</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Recebido por hospital</CardTitle></CardHeader>
         <CardContent className="h-80">
           <ResponsiveContainer>
             <BarChart data={chartData}>

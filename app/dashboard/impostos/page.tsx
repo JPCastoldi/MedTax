@@ -1,42 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import { AlertCircle, Calculator, CheckCircle2, Info, Lightbulb, TrendingDown, TrendingUp } from "lucide-react"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import {
-  Calculator,
-  TrendingUp,
-  TrendingDown,
-  AlertCircle,
-  CheckCircle2,
-  ArrowRight,
-  Info,
-  Lightbulb,
-} from "lucide-react"
-import {
-  Bar,
-  BarChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Cell,
-} from "recharts"
 
-interface SimulacaoResult {
+type SimulacaoResult = {
   regime: string
   aliquotaEfetiva: number
   impostoMensal: number
@@ -44,399 +17,194 @@ interface SimulacaoResult {
   liquido: number
 }
 
+function money(value: number) {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })
+}
+
 export default function ImpostosPage() {
-  const [faturamento, setFaturamento] = useState(67000)
-  const [folhaPagamento, setFolhaPagamento] = useState(21000)
-  const [regime, setRegime] = useState("simples")
-  const [anexo, setAnexo] = useState("anexo3")
+  const [faturamento, setFaturamento] = useState(30000)
+  const [folhaPagamento, setFolhaPagamento] = useState(9000)
 
-  const fatorR = folhaPagamento / faturamento
-  const fatorRPercent = (fatorR * 100).toFixed(1)
+  const fatorR = faturamento > 0 ? folhaPagamento / faturamento : 0
+  const fatorRPercent = fatorR * 100
 
-  // Cálculos do Simples Nacional
-  const calcularSimplesNacional = (): SimulacaoResult => {
-    let aliquota = 0
+  const simplesResult = useMemo<SimulacaoResult>(() => {
+    const receitaAnual = faturamento * 12
+    const anexoIII = fatorR >= 0.28
+    let aliquota = anexoIII ? 0.06 : 0.155
     let deducao = 0
-    
-    if (fatorR >= 0.28) {
-      // Anexo III
-      if (faturamento * 12 <= 180000) {
-        aliquota = 0.06
-        deducao = 0
-      } else if (faturamento * 12 <= 360000) {
-        aliquota = 0.112
-        deducao = 9360
-      } else if (faturamento * 12 <= 720000) {
-        aliquota = 0.135
-        deducao = 17640
-      } else {
-        aliquota = 0.16
-        deducao = 35640
-      }
+
+    if (anexoIII) {
+      if (receitaAnual > 720000) { aliquota = 0.16; deducao = 35640 }
+      else if (receitaAnual > 360000) { aliquota = 0.135; deducao = 17640 }
+      else if (receitaAnual > 180000) { aliquota = 0.112; deducao = 9360 }
     } else {
-      // Anexo V
-      if (faturamento * 12 <= 180000) {
-        aliquota = 0.155
-        deducao = 0
-      } else if (faturamento * 12 <= 360000) {
-        aliquota = 0.18
-        deducao = 4500
-      } else if (faturamento * 12 <= 720000) {
-        aliquota = 0.195
-        deducao = 9900
-      } else {
-        aliquota = 0.205
-        deducao = 17100
-      }
+      if (receitaAnual > 720000) { aliquota = 0.205; deducao = 17100 }
+      else if (receitaAnual > 360000) { aliquota = 0.195; deducao = 9900 }
+      else if (receitaAnual > 180000) { aliquota = 0.18; deducao = 4500 }
     }
 
-    const aliquotaEfetiva = (((faturamento * 12 * aliquota) - deducao) / (faturamento * 12)) * 100
+    const aliquotaEfetiva = Math.max(((receitaAnual * aliquota - deducao) / receitaAnual) * 100, anexoIII ? 6 : 15.5)
     const impostoMensal = faturamento * (aliquotaEfetiva / 100)
-    const impostoAnual = impostoMensal * 12
-
     return {
-      regime: "Simples Nacional",
-      aliquotaEfetiva: Math.max(aliquotaEfetiva, 6),
-      impostoMensal,
-      impostoAnual,
-      liquido: faturamento - impostoMensal,
-    }
-  }
-
-  // Cálculos do Lucro Presumido
-  const calcularLucroPresumido = (): SimulacaoResult => {
-    const baseCalculo = faturamento * 0.32 // 32% para serviços
-    const irpj = baseCalculo * 0.15
-    const csll = baseCalculo * 0.09
-    const pis = faturamento * 0.0065
-    const cofins = faturamento * 0.03
-    const iss = faturamento * 0.05 // 5% ISS
-
-    const impostoMensal = irpj + csll + pis + cofins + iss
-    const aliquotaEfetiva = (impostoMensal / faturamento) * 100
-
-    return {
-      regime: "Lucro Presumido",
+      regime: anexoIII ? "Simples Nacional - Anexo III" : "Simples Nacional - Anexo V",
       aliquotaEfetiva,
       impostoMensal,
       impostoAnual: impostoMensal * 12,
       liquido: faturamento - impostoMensal,
     }
-  }
+  }, [faturamento, fatorR])
 
-  const simplesResult = calcularSimplesNacional()
-  const presumidoResult = calcularLucroPresumido()
+  const presumidoResult = useMemo<SimulacaoResult>(() => {
+    const baseCalculo = faturamento * 0.32
+    const impostoMensal =
+      baseCalculo * 0.15 +
+      baseCalculo * 0.09 +
+      faturamento * 0.0065 +
+      faturamento * 0.03 +
+      faturamento * 0.05
+    return {
+      regime: "Lucro Presumido",
+      aliquotaEfetiva: faturamento > 0 ? (impostoMensal / faturamento) * 100 : 0,
+      impostoMensal,
+      impostoAnual: impostoMensal * 12,
+      liquido: faturamento - impostoMensal,
+    }
+  }, [faturamento])
 
-  const comparisonData = [
-    {
-      name: "Simples Nacional",
-      imposto: simplesResult.impostoMensal,
-      aliquota: simplesResult.aliquotaEfetiva,
-    },
-    {
-      name: "Lucro Presumido",
-      imposto: presumidoResult.impostoMensal,
-      aliquota: presumidoResult.aliquotaEfetiva,
-    },
-  ]
-
-  const melhorOpcao = simplesResult.impostoMensal <= presumidoResult.impostoMensal ? "simples" : "presumido"
+  const melhorOpcao = simplesResult.impostoMensal <= presumidoResult.impostoMensal ? simplesResult : presumidoResult
   const economia = Math.abs(simplesResult.impostoMensal - presumidoResult.impostoMensal)
-
-  const projecaoAnual = [
-    { mes: "Jan", simples: simplesResult.impostoMensal, presumido: presumidoResult.impostoMensal },
-    { mes: "Fev", simples: simplesResult.impostoMensal * 1.05, presumido: presumidoResult.impostoMensal * 1.05 },
-    { mes: "Mar", simples: simplesResult.impostoMensal * 0.95, presumido: presumidoResult.impostoMensal * 0.95 },
-    { mes: "Abr", simples: simplesResult.impostoMensal * 1.1, presumido: presumidoResult.impostoMensal * 1.1 },
-    { mes: "Mai", simples: simplesResult.impostoMensal * 1.02, presumido: presumidoResult.impostoMensal * 1.02 },
-    { mes: "Jun", simples: simplesResult.impostoMensal, presumido: presumidoResult.impostoMensal },
-    { mes: "Jul", simples: simplesResult.impostoMensal * 1.08, presumido: presumidoResult.impostoMensal * 1.08 },
-    { mes: "Ago", simples: simplesResult.impostoMensal * 0.98, presumido: presumidoResult.impostoMensal * 0.98 },
-    { mes: "Set", simples: simplesResult.impostoMensal * 1.12, presumido: presumidoResult.impostoMensal * 1.12 },
-    { mes: "Out", simples: simplesResult.impostoMensal * 1.05, presumido: presumidoResult.impostoMensal * 1.05 },
-    { mes: "Nov", simples: simplesResult.impostoMensal * 1.15, presumido: presumidoResult.impostoMensal * 1.15 },
-    { mes: "Dez", simples: simplesResult.impostoMensal * 1.2, presumido: presumidoResult.impostoMensal * 1.2 },
+  const comparisonData = [
+    { name: "Simples", imposto: simplesResult.impostoMensal },
+    { name: "Presumido", imposto: presumidoResult.impostoMensal },
   ]
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Simulador Tributário</h1>
-        <p className="text-muted-foreground">Compare regimes e planeje seus impostos</p>
+        <h1 className="text-2xl font-bold text-foreground">Simulador Tributario</h1>
+        <p className="text-muted-foreground">Compare Simples Nacional e Lucro Presumido com base no faturamento mensal.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Input Section */}
-        <Card className="lg:col-span-1">
+      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calculator className="h-5 w-5 text-primary" />
-              Parâmetros
-            </CardTitle>
-            <CardDescription>Configure os valores para simulação</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5 text-primary" />Parametros</CardTitle>
+            <CardDescription>Ajuste os valores para simular o imposto.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-3">
-              <Label>Faturamento Mensal</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                <Input
-                  type="number"
-                  value={faturamento}
-                  onChange={(e) => setFaturamento(Number(e.target.value))}
-                  className="pl-10"
-                />
-              </div>
-              <Slider
-                value={[faturamento]}
-                onValueChange={(value) => setFaturamento(value[0])}
-                max={200000}
-                min={5000}
-                step={1000}
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>R$ 5.000</span>
-                <span>R$ 200.000</span>
-              </div>
-            </div>
+            <MoneyField label="Faturamento mensal" value={faturamento} onChange={setFaturamento} />
+            <Slider value={[faturamento]} min={5000} max={200000} step={1000} onValueChange={(value) => setFaturamento(value[0])} />
 
-            <div className="space-y-3">
-              <Label>Folha de Pagamento (Pró-labore + Salários)</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                <Input
-                  type="number"
-                  value={folhaPagamento}
-                  onChange={(e) => setFolhaPagamento(Number(e.target.value))}
-                  className="pl-10"
-                />
-              </div>
-              <Slider
-                value={[folhaPagamento]}
-                onValueChange={(value) => setFolhaPagamento(value[0])}
-                max={faturamento * 0.5}
-                min={1412}
-                step={100}
-              />
-            </div>
+            <MoneyField label="Folha / pro-labore mensal" value={folhaPagamento} onChange={setFolhaPagamento} />
+            <Slider value={[folhaPagamento]} min={0} max={Math.max(faturamento * 0.6, 1000)} step={500} onValueChange={(value) => setFolhaPagamento(value[0])} />
 
-            <div className="rounded-lg border border-border bg-muted/50 p-4">
-              <div className="flex items-center justify-between mb-2">
+            <div className="rounded-lg border bg-muted/40 p-4">
+              <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm font-medium">Fator R</span>
-                <Badge variant={fatorR >= 0.28 ? "default" : "destructive"} className={fatorR >= 0.28 ? "bg-success/10 text-success" : ""}>
-                  {fatorRPercent}%
-                </Badge>
+                <Badge variant={fatorR >= 0.28 ? "default" : "secondary"}>{fatorRPercent.toFixed(1)}%</Badge>
               </div>
-              <div className="h-2 w-full rounded-full bg-muted">
-                <div
-                  className={`h-2 rounded-full transition-all ${fatorR >= 0.28 ? "bg-success" : "bg-warning"}`}
-                  style={{ width: `${Math.min(fatorR * 100, 100)}%` }}
-                />
+              <div className="h-2 rounded-full bg-muted">
+                <div className="h-2 rounded-full bg-emerald-600" style={{ width: `${Math.min(fatorRPercent, 100)}%` }} />
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {fatorR >= 0.28 ? (
-                  <span className="flex items-center gap-1 text-success">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Enquadrado no Anexo III (alíquotas menores)
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-warning">
-                    <AlertCircle className="h-3 w-3" />
-                    Enquadrado no Anexo V (aumente a folha para 28%)
-                  </span>
-                )}
+              <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                {fatorR >= 0.28 ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertCircle className="h-4 w-4 text-amber-600" />}
+                {fatorR >= 0.28 ? "Enquadramento estimado no Anexo III." : "Abaixo de 28%, tende ao Anexo V."}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Results Section */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Recommendation Card */}
-          <Card className={`border-2 ${melhorOpcao === "simples" ? "border-success/50 bg-success/5" : "border-primary/50 bg-primary/5"}`}>
-            <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4">
+        <div className="space-y-6">
+          <Card className="border-emerald-200 bg-emerald-50">
+            <CardContent className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-4">
-                <div className={`rounded-full p-3 ${melhorOpcao === "simples" ? "bg-success/10" : "bg-primary/10"}`}>
-                  <Lightbulb className={`h-6 w-6 ${melhorOpcao === "simples" ? "text-success" : "text-primary"}`} />
-                </div>
+                <span className="rounded-full bg-emerald-600/10 p-3"><Lightbulb className="h-6 w-6 text-emerald-700" /></span>
                 <div>
-                  <h3 className="font-semibold text-foreground">Recomendação</h3>
-                  <p className="text-sm text-muted-foreground">
-                    O <span className="font-semibold">{melhorOpcao === "simples" ? "Simples Nacional" : "Lucro Presumido"}</span> é mais vantajoso. 
-                    Economia de <span className="font-semibold text-success">R$ {economia.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}/mês</span>
-                  </p>
+                  <h2 className="font-semibold text-emerald-950">Melhor estimativa: {melhorOpcao.regime}</h2>
+                  <p className="text-sm text-emerald-800">Economia aproximada de {money(economia)} por mes.</p>
                 </div>
               </div>
-              <Badge variant="outline" className="text-sm">
-                {((economia / faturamento) * 100).toFixed(1)}% de economia
-              </Badge>
+              <Badge className="bg-emerald-600">{((economia / Math.max(faturamento, 1)) * 100).toFixed(1)}% de diferenca</Badge>
             </CardContent>
           </Card>
 
-          {/* Comparison Cards */}
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className={melhorOpcao === "simples" ? "ring-2 ring-success" : ""}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Simples Nacional</CardTitle>
-                  {melhorOpcao === "simples" && (
-                    <Badge className="bg-success/10 text-success">Melhor opção</Badge>
-                  )}
-                </div>
-                <CardDescription>
-                  {fatorR >= 0.28 ? "Anexo III" : "Anexo V"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Alíquota Efetiva</span>
-                  <span className="text-xl font-bold">{simplesResult.aliquotaEfetiva.toFixed(2)}%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Imposto Mensal</span>
-                  <span className="text-xl font-bold text-warning">
-                    R$ {simplesResult.impostoMensal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Imposto Anual</span>
-                  <span className="font-semibold">
-                    R$ {simplesResult.impostoAnual.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
-                  </span>
-                </div>
-                <div className="border-t border-border pt-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">Líquido Mensal</span>
-                    <span className="text-xl font-bold text-success">
-                      R$ {simplesResult.liquido.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className={melhorOpcao === "presumido" ? "ring-2 ring-primary" : ""}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Lucro Presumido</CardTitle>
-                  {melhorOpcao === "presumido" && (
-                    <Badge className="bg-primary/10 text-primary">Melhor opção</Badge>
-                  )}
-                </div>
-                <CardDescription>Base 32% + Tributos</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Alíquota Efetiva</span>
-                  <span className="text-xl font-bold">{presumidoResult.aliquotaEfetiva.toFixed(2)}%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Imposto Mensal</span>
-                  <span className="text-xl font-bold text-warning">
-                    R$ {presumidoResult.impostoMensal.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Imposto Anual</span>
-                  <span className="font-semibold">
-                    R$ {presumidoResult.impostoAnual.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
-                  </span>
-                </div>
-                <div className="border-t border-border pt-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">Líquido Mensal</span>
-                    <span className="text-xl font-bold text-success">
-                      R$ {presumidoResult.liquido.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <ResultCard result={simplesResult} highlighted={melhorOpcao === simplesResult} />
+            <ResultCard result={presumidoResult} highlighted={melhorOpcao === presumidoResult} />
           </div>
 
-          {/* Chart */}
           <Card>
             <CardHeader>
-              <CardTitle>Comparativo de Impostos</CardTitle>
-              <CardDescription>Visualização mensal dos valores por regime</CardDescription>
+              <CardTitle>Comparativo mensal</CardTitle>
+              <CardDescription>Valores estimados de imposto por regime.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={comparisonData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="name" className="text-xs fill-muted-foreground" />
-                    <YAxis className="text-xs fill-muted-foreground" tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                      formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`, "Imposto"]}
-                    />
-                    <Bar dataKey="imposto" radius={[4, 4, 0, 0]}>
-                      {comparisonData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={entry.name === "Simples Nacional" ? "oklch(0.55 0.15 160)" : "oklch(0.65 0.12 200)"} 
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            <CardContent className="h-72">
+              <ResponsiveContainer>
+                <BarChart data={comparisonData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis tickFormatter={(value) => `R$${(Number(value) / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(value: number) => money(value)} />
+                  <Bar dataKey="imposto" fill="#10b981" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Info Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Info className="h-4 w-4 text-chart-2" />
-              Fator R
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              O Fator R determina em qual anexo do Simples Nacional sua empresa se enquadra. 
-              Se for maior ou igual a 28%, você fica no Anexo III com alíquotas menores.
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-success" />
-              Anexo III
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Alíquotas iniciais a partir de 6%. Ideal para empresas com folha de pagamento 
-              representativa (28% ou mais do faturamento).
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-warning" />
-              Anexo V
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Alíquotas iniciais a partir de 15,5%. Aplicado quando o Fator R é menor que 28%. 
-              Pode ser menos vantajoso que o Lucro Presumido.
-            </p>
-          </CardContent>
-        </Card>
+        <InfoCard icon={Info} title="Estimativa" text="Os valores sao aproximados e servem para planejamento. A apuracao final depende do contador e da prefeitura." />
+        <InfoCard icon={TrendingUp} title="Anexo III" text="Com Fator R igual ou acima de 28%, a empresa tende a pagar aliquotas menores no Simples." />
+        <InfoCard icon={TrendingDown} title="Anexo V" text="Com Fator R abaixo de 28%, o Simples pode ficar mais caro e deve ser comparado com Lucro Presumido." />
       </div>
     </div>
+  )
+}
+
+function MoneyField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+        <Input type="number" min={0} value={value} onChange={(event) => onChange(Number(event.target.value) || 0)} className="pl-10" />
+      </div>
+    </div>
+  )
+}
+
+function ResultCard({ result, highlighted }: { result: SimulacaoResult; highlighted: boolean }) {
+  return (
+    <Card className={highlighted ? "border-emerald-500 ring-1 ring-emerald-500" : undefined}>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between text-lg">
+          {result.regime}
+          {highlighted && <Badge className="bg-emerald-600">Melhor</Badge>}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Row label="Aliquota efetiva" value={`${result.aliquotaEfetiva.toFixed(2)}%`} />
+        <Row label="Imposto mensal" value={money(result.impostoMensal)} />
+        <Row label="Imposto anual" value={money(result.impostoAnual)} />
+        <div className="border-t pt-3"><Row label="Liquido mensal" value={money(result.liquido)} strong /></div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted-foreground">{label}</span><span className={strong ? "font-bold text-emerald-700" : "font-semibold"}>{value}</span></div>
+}
+
+function InfoCard({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base"><Icon className="h-4 w-4 text-emerald-600" />{title}</CardTitle>
+      </CardHeader>
+      <CardContent><p className="text-sm text-muted-foreground">{text}</p></CardContent>
+    </Card>
   )
 }

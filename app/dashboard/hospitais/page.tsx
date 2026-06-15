@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { formatUf } from "@/lib/form-validation"
 import type { Hospital } from "@/lib/types"
 
 const emptyForm = {
@@ -38,8 +39,10 @@ export default function HospitaisPage() {
     () => hospitais.filter((h) => `${h.nome} ${h.cidade}`.toLowerCase().includes(search.toLowerCase())),
     [hospitais, search]
   )
+  const canSave = Boolean(form.nome.trim().length >= 3 && form.cidade.trim().length >= 2 && form.estado.length === 2)
 
   async function save() {
+    if (!canSave) return
     const url = editingId ? `/api/hospitais/${editingId}` : "/api/hospitais"
     const payload = {
       ...form,
@@ -89,13 +92,13 @@ export default function HospitaisPage() {
         <CardContent className="grid gap-4 md:grid-cols-4">
           <Field label="Nome" value={form.nome} onChange={(nome) => setForm({ ...form, nome })} />
           <Field label="Cidade" value={form.cidade} onChange={(cidade) => setForm({ ...form, cidade })} />
-          <Field label="UF" value={form.estado} onChange={(estado) => setForm({ ...form, estado })} />
+          <Field label="UF" value={form.estado} onChange={(estado) => setForm({ ...form, estado: formatUf(estado) })} />
           <div className="space-y-2">
             <Label>Cor</Label>
             <Input type="color" value={form.cor} onChange={(event) => setForm({ ...form, cor: event.target.value })} />
           </div>
           <div className="flex gap-2 md:col-span-4">
-            <Button onClick={save}><Plus className="mr-2 h-4 w-4" />Salvar</Button>
+            <Button disabled={!canSave} onClick={save}><Plus className="mr-2 h-4 w-4" />Salvar</Button>
             {editingId && <Button variant="outline" onClick={() => { setEditingId(null); setForm(emptyForm) }}>Cancelar</Button>}
           </div>
         </CardContent>
