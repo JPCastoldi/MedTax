@@ -169,17 +169,43 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState<CurrentUser>({ name: "Carregando...", email: "" })
   const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [seenNotificationIds, setSeenNotificationIds] = useState<string[]>([])
   const displayName = doctorName(user.name)
+  const activeNotificationIds = notifications.filter((notification) => notification.id !== "sem-pendencias").map((notification) => notification.id)
+  const unreadCount = activeNotificationIds.filter((id) => !seenNotificationIds.includes(id)).length
 
   async function loadNotifications() {
     const response = await fetch("/api/notificacoes")
-    if (response.ok) setNotifications(await response.json())
+    if (!response.ok) return []
+    const data = await response.json()
+    setNotifications(data)
+    return data as AppNotification[]
+  }
+
+  function markNotificationsSeen(ids = activeNotificationIds) {
+    const nextSeen = Array.from(new Set([...seenNotificationIds, ...ids]))
+    setSeenNotificationIds(nextSeen)
+    window.localStorage.setItem("medtax_seen_notifications", JSON.stringify(nextSeen))
+  }
+
+  async function openNotifications(open: boolean) {
+    if (!open) return
+    const freshNotifications = await loadNotifications()
+    markNotificationsSeen(freshNotifications.filter((notification) => notification.id !== "sem-pendencias").map((notification) => notification.id))
   }
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then((response) => response.json())
       .then(setUser)
+    const storedSeen = window.localStorage.getItem("medtax_seen_notifications")
+    if (storedSeen) {
+      try {
+        setSeenNotificationIds(JSON.parse(storedSeen))
+      } catch {
+        setSeenNotificationIds([])
+      }
+    }
     loadNotifications()
   }, [])
 
@@ -211,13 +237,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <DropdownMenu onOpenChange={(open) => { if (open) loadNotifications() }}>
+          <DropdownMenu onOpenChange={openNotifications}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
-                {notifications.length > 0 && notifications[0]?.id !== "sem-pendencias" && (
+                {unreadCount > 0 && (
                   <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white">
-                    {notifications.length}
+                    {unreadCount}
                   </span>
                 )}
               </Button>

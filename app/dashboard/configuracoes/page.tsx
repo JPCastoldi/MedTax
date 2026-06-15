@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { CheckCircle2, Moon, Save, Sun } from "lucide-react"
+import { CheckCircle2, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,15 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { formatCrm, formatPhone, isValidCrm, isValidEmail } from "@/lib/form-validation"
 import type { AppSettings } from "@/lib/types"
+
+const notificationOptions: Array<{ key: keyof AppSettings["notifications"]; title: string; description: string }> = [
+  { key: "alertas", title: "Alertas financeiros", description: "Mostra plantões pendentes, faturados e valores a receber." },
+  { key: "vencimentos", title: "Impostos e vencimentos", description: "Avisa quando existir imposto ou DAS estimado no mês." },
+  { key: "relatorios", title: "Notas e relatórios", description: "Mostra notas emitidas recentemente e resumo fiscal." },
+  { key: "email", title: "Resumo por e-mail", description: "Preferência salva para futuros envios por e-mail." },
+  { key: "push", title: "Notificações no app", description: "Mantém o sino do topo ativo para alertas dentro do sistema." },
+  { key: "sms", title: "SMS", description: "Preferência salva para futuros lembretes por SMS." },
+]
 
 export default function ConfiguracoesPage() {
   const [settings, setSettings] = useState<AppSettings | null>(null)
@@ -39,7 +48,7 @@ export default function ConfiguracoesPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Configuracoes</h1>
-          <p className="text-muted-foreground">Perfil, notificacoes e aparencia persistidos.</p>
+          <p className="text-muted-foreground">Perfil e notificacoes persistidos.</p>
         </div>
         {saved && <span className="flex items-center gap-2 text-sm text-green-600"><CheckCircle2 className="h-4 w-4" />Salvo</span>}
       </div>
@@ -48,7 +57,6 @@ export default function ConfiguracoesPage() {
         <TabsList>
           <TabsTrigger value="perfil">Perfil</TabsTrigger>
           <TabsTrigger value="notificacoes">Notificacoes</TabsTrigger>
-          <TabsTrigger value="aparencia">Aparencia</TabsTrigger>
         </TabsList>
 
         <TabsContent value="perfil" className="space-y-4">
@@ -96,30 +104,16 @@ export default function ConfiguracoesPage() {
           <Card>
             <CardHeader><CardTitle>Preferencias de notificacao</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              {Object.entries(settings.notifications).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between rounded-md border p-3">
-                  <Label className="capitalize">{key}</Label>
-                  <Switch checked={value} onCheckedChange={(checked) => setSettings({ ...settings, notifications: { ...settings.notifications, [key]: checked } })} />
+              {notificationOptions.map((option) => (
+                <div key={option.key} className="flex items-center justify-between gap-4 rounded-md border p-3">
+                  <div>
+                    <Label>{option.title}</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">{option.description}</p>
+                  </div>
+                  <Switch checked={settings.notifications[option.key]} onCheckedChange={(checked) => setSettings({ ...settings, notifications: { ...settings.notifications, [option.key]: checked } })} />
                 </div>
               ))}
               <Button onClick={save}><Save className="mr-2 h-4 w-4" />Salvar notificacoes</Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="aparencia">
-          <Card>
-            <CardHeader><CardTitle>Tema</CardTitle></CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <button className={`rounded-md border p-6 text-left ${!settings.darkMode ? "border-primary bg-primary/5" : ""}`} onClick={() => setSettings({ ...settings, darkMode: false })}>
-                <Sun className="mb-3 h-6 w-6" />
-                <strong>Claro</strong>
-              </button>
-              <button className={`rounded-md border p-6 text-left ${settings.darkMode ? "border-primary bg-primary/5" : ""}`} onClick={() => setSettings({ ...settings, darkMode: true })}>
-                <Moon className="mb-3 h-6 w-6" />
-                <strong>Escuro</strong>
-              </button>
-              <Button className="md:col-span-2" onClick={save}><Save className="mr-2 h-4 w-4" />Salvar aparencia</Button>
             </CardContent>
           </Card>
         </TabsContent>
