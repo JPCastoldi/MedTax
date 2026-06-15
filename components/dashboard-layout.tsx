@@ -11,6 +11,7 @@ import {
   CalendarDays,
   ChevronLeft,
   FileText,
+  HelpCircle,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -237,54 +238,92 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <DropdownMenu onOpenChange={openNotifications}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white">
-                    {unreadCount}
-                  </span>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-96 p-0">
-              <div className="flex items-center justify-between border-b px-4 py-3">
-                <div>
-                  <p className="font-semibold">Notificacoes</p>
-                  <p className="text-xs text-muted-foreground">Alertas gerados pelos seus dados</p>
+          <div className="flex items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative" title="Ajuda">
+                  <HelpCircle className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-96 p-0">
+                <div className="border-b px-4 py-3">
+                  <p className="font-semibold">Guia rapido do mes piloto</p>
+                  <p className="text-xs text-muted-foreground">Fluxo recomendado para usar o MedTax no teste.</p>
                 </div>
-                <Button variant="ghost" size="sm" onClick={loadNotifications}>Atualizar</Button>
-              </div>
-              <div className="max-h-96 overflow-y-auto p-2">
-                {notifications.map((notification) => (
-                  <DropdownMenuItem key={notification.id} asChild className="cursor-pointer rounded-md p-0">
-                    <Link href={notification.href} className="flex w-full gap-3 p-3">
-                      <span className={cn(
-                        "mt-1 h-2.5 w-2.5 shrink-0 rounded-full",
-                        notification.level === "warning" && "bg-amber-500",
-                        notification.level === "success" && "bg-emerald-500",
-                        notification.level === "info" && "bg-sky-500"
-                      )} />
-                      <span>
-                        <span className="block text-sm font-medium">{notification.title}</span>
-                        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{notification.description}</span>
-                      </span>
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
-              </div>
-              <div className="border-t px-4 py-3">
-                <Link href="/dashboard/configuracoes" className="text-xs font-medium text-emerald-600">
-                  Ajustar preferencias de notificacao
-                </Link>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <div className="space-y-3 p-4 text-sm">
+                  <HelpStep step="1" text="Cadastre os hospitais onde trabalha." />
+                  <HelpStep step="2" text="Lance os plantoes no calendario com valor e hospital." />
+                  <HelpStep step="3" text="Quando for cobrar, mude o plantao para faturado e gere a nota por hospital." />
+                  <HelpStep step="4" text="Quando o pagamento cair, marque o plantao como recebido." />
+                  <div className="rounded-md bg-emerald-50 p-3 text-xs text-emerald-800">
+                    Imposto a pagar e calculado apenas sobre recebidos com nota vinculada. Recebido direto sem nota aparece no caixa, mas nao entra no imposto.
+                  </div>
+                </div>
+                <div className="flex gap-2 border-t p-3">
+                  <Button asChild size="sm" className="flex-1"><Link href="/dashboard/plantoes">Abrir agenda</Link></Button>
+                  <Button asChild size="sm" variant="outline" className="flex-1"><Link href="/dashboard/notas">Ver notas</Link></Button>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu onOpenChange={openNotifications}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-96 p-0">
+                <div className="flex items-center justify-between border-b px-4 py-3">
+                  <div>
+                    <p className="font-semibold">Notificacoes</p>
+                    <p className="text-xs text-muted-foreground">Alertas gerados pelos seus dados</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={loadNotifications}>Atualizar</Button>
+                </div>
+                <div className="max-h-96 overflow-y-auto p-2">
+                  {notifications.map((notification) => (
+                    <DropdownMenuItem key={notification.id} asChild className="cursor-pointer rounded-md p-0">
+                      <Link href={notification.href} className="flex w-full gap-3 p-3">
+                        <span className={cn(
+                          "mt-1 h-2.5 w-2.5 shrink-0 rounded-full",
+                          notification.level === "warning" && "bg-amber-500",
+                          notification.level === "success" && "bg-emerald-500",
+                          notification.level === "info" && "bg-sky-500"
+                        )} />
+                        <span>
+                          <span className="block text-sm font-medium">{notification.title}</span>
+                          <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{notification.description}</span>
+                        </span>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+                <div className="border-t px-4 py-3">
+                  <Link href="/dashboard/configuracoes" className="text-xs font-medium text-emerald-600">
+                    Ajustar preferencias de notificacao
+                  </Link>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
 
         <main className="flex-1 p-4 lg:p-6">{children}</main>
       </div>
+    </div>
+  )
+}
+
+function HelpStep({ step, text }: { step: string; text: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">{step}</span>
+      <span className="leading-6">{text}</span>
     </div>
   )
 }
