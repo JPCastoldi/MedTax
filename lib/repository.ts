@@ -250,9 +250,9 @@ export async function gerarNotaPorHospital(
   return nota
 }
 
-export async function dashboardData(userId?: string | null): Promise<DashboardData> {
+export async function dashboardData(userId?: string | null, month?: string | null): Promise<DashboardData> {
   const [plantoes, notas, hospitais, empresas] = await Promise.all([listPlantoes(userId), listNotas(userId), listHospitals(userId), listEmpresas(userId)])
-  const nowMonth = isoDate(new Date()).slice(0, 7)
+  const nowMonth = month && /^\d{4}-\d{2}$/.test(month) ? month : isoDate(new Date()).slice(0, 7)
   const plantoesMes = plantoes.filter((p) => p.data.startsWith(nowMonth))
   const notasMes = notas.filter((n) => n.dataEmissao.startsWith(nowMonth) && n.status === "emitida")
   const notasById = new Map(notas.map((nota) => [nota.id, nota]))
@@ -272,13 +272,17 @@ export async function dashboardData(userId?: string | null): Promise<DashboardDa
   const valorPrevisto = plantoesMes.reduce((sum, p) => sum + p.valor, 0)
   const valorFaturado = notasMes.reduce((sum, n) => sum + n.valor, 0)
   const valorRecebido = recebidosMes.reduce((sum, p) => sum + p.valor, 0)
+  const valorRecebidoComNota = recebidosMes.reduce((sum, p) => {
+    const nota = p.notaFiscalId ? notasById.get(p.notaFiscalId) : null
+    return nota ? sum + p.valor : sum
+  }, 0)
   const valorAReceber = faturadosMes.reduce((sum, p) => sum + p.valor, 0)
   const pendenteNota = pendentesMes.reduce((sum, p) => sum + p.valor, 0)
   const regime = empresas[0]?.regimeTributario ?? "Simples Nacional"
   const isSimples = regime.toLowerCase().includes("simples")
   const tributoLabel = isSimples ? "DAS estimado" : "Impostos estimados"
   const taxRate = isSimples ? 0.06 : 0.1333
-  const impostosEstimados = valorRecebido * taxRate
+  const impostosEstimados = valorRecebidoComNota * taxRate
   const ranking = hospitais.map((h) => ({ nome: h.nome, faturado: h.totalFaturado, plantoes: h.plantoesRealizados, cor: h.cor })).sort((a, b) => b.faturado - a.faturado)
   return {
       kpis: { plantoesMes: plantoesMes.length, valorPrevisto, valorFaturado, valorRecebido, valorAReceber, pendenteNota, impostosEstimados, liquidoEstimado: valorRecebido - impostosEstimados, tributoLabel },

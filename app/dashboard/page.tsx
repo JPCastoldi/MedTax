@@ -5,14 +5,22 @@ import { useEffect, useState } from "react"
 import { Building2, ChevronRight, FileText, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import type { DashboardData } from "@/lib/types"
+
+function currentMonth() {
+  const date = new Date()
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+}
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth)
 
   useEffect(() => {
-    fetch("/api/dashboard").then((response) => response.json()).then(setData)
-  }, [])
+    setData(null)
+    fetch(`/api/dashboard?month=${selectedMonth}`).then((response) => response.json()).then(setData)
+  }, [selectedMonth])
 
   if (!data) return <p>Carregando dashboard...</p>
 
@@ -20,6 +28,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Visualize recebimentos, notas e impostos por mes.</p>
+        </div>
+        <Input type="month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} className="w-full sm:w-44" />
+      </div>
+
       <div className="grid gap-4 md:grid-cols-3">
         <Metric icon={Wallet} title="Recebido no mes" value={`R$ ${kpis.valorRecebido.toLocaleString("pt-BR")}`} />
         <Metric icon={Wallet} title="A receber no mes" value={`R$ ${kpis.valorAReceber.toLocaleString("pt-BR")}`} />
@@ -30,7 +46,7 @@ export default function DashboardPage() {
         <CardContent className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="font-semibold">Previsao tributaria do mes</h2>
-            <p className="text-sm text-muted-foreground">Calculada sobre plantoes marcados como recebidos no mes.</p>
+            <p className="text-sm text-muted-foreground">Calculada apenas sobre recebidos com nota vinculada no mes selecionado.</p>
           </div>
           <div className="flex flex-wrap gap-6">
             <strong>{kpis.tributoLabel}: R$ {kpis.impostosEstimados.toLocaleString("pt-BR")}</strong>
