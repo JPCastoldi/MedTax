@@ -35,6 +35,15 @@ type CurrentUser = {
   crm?: string | null
 }
 
+type AppNotification = {
+  id: string
+  title: string
+  description: string
+  href: string
+  level: "info" | "warning" | "success"
+  createdAt: string
+}
+
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Plantoes", href: "/dashboard/plantoes", icon: CalendarDays },
@@ -159,12 +168,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState<CurrentUser>({ name: "Carregando...", email: "" })
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
   const displayName = doctorName(user.name)
+
+  async function loadNotifications() {
+    const response = await fetch("/api/notificacoes")
+    if (response.ok) setNotifications(await response.json())
+  }
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then((response) => response.json())
       .then(setUser)
+    loadNotifications()
   }, [])
 
   return (
@@ -195,9 +211,50 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-          </Button>
+          <DropdownMenu onOpenChange={(open) => { if (open) loadNotifications() }}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="h-5 w-5" />
+                {notifications.length > 0 && notifications[0]?.id !== "sem-pendencias" && (
+                  <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white">
+                    {notifications.length}
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-96 p-0">
+              <div className="flex items-center justify-between border-b px-4 py-3">
+                <div>
+                  <p className="font-semibold">Notificacoes</p>
+                  <p className="text-xs text-muted-foreground">Alertas gerados pelos seus dados</p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={loadNotifications}>Atualizar</Button>
+              </div>
+              <div className="max-h-96 overflow-y-auto p-2">
+                {notifications.map((notification) => (
+                  <DropdownMenuItem key={notification.id} asChild className="cursor-pointer rounded-md p-0">
+                    <Link href={notification.href} className="flex w-full gap-3 p-3">
+                      <span className={cn(
+                        "mt-1 h-2.5 w-2.5 shrink-0 rounded-full",
+                        notification.level === "warning" && "bg-amber-500",
+                        notification.level === "success" && "bg-emerald-500",
+                        notification.level === "info" && "bg-sky-500"
+                      )} />
+                      <span>
+                        <span className="block text-sm font-medium">{notification.title}</span>
+                        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{notification.description}</span>
+                      </span>
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </div>
+              <div className="border-t px-4 py-3">
+                <Link href="/dashboard/configuracoes" className="text-xs font-medium text-emerald-600">
+                  Ajustar preferencias de notificacao
+                </Link>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
 
         <main className="flex-1 p-4 lg:p-6">{children}</main>

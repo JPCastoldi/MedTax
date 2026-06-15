@@ -468,6 +468,92 @@ export async function reportData(userId?: string | null) {
   return { dashboard, hospitais, plantoes, notas, empresas }
 }
 
+export type AppNotification = {
+  id: string
+  title: string
+  description: string
+  href: string
+  level: "info" | "warning" | "success"
+  createdAt: string
+}
+
+export async function listNotifications(userId?: string | null): Promise<AppNotification[]> {
+  const [settings, dashboard, plantoes, notas] = await Promise.all([
+    getSettings(userId),
+    dashboardData(userId),
+    listPlantoes(userId),
+    listNotas(userId),
+  ])
+  const notifications: AppNotification[] = []
+  const today = isoDate(new Date())
+
+  if (settings.notifications.alertas) {
+    const pendingPlantoes = plantoes.filter((plantao) => plantao.status === "realizado" && !plantao.notaFiscalId)
+    if (pendingPlantoes.length > 0) {
+      const total = pendingPlantoes.reduce((sum, plantao) => sum + plantao.valor, 0)
+      notifications.push({
+        id: "plantoes-pendentes",
+        title: `${pendingPlantoes.length} plantoes pendentes`,
+        description: `R$ ${total.toLocaleString("pt-BR")} ainda podem ser marcados como faturados.`,
+        href: "/dashboard/plantoes",
+        level: "warning",
+        createdAt: today,
+      })
+    }
+
+    const billedPlantoes = plantoes.filter((plantao) => plantao.status === "faturado")
+    if (billedPlantoes.length > 0) {
+      const total = billedPlantoes.reduce((sum, plantao) => sum + plantao.valor, 0)
+      notifications.push({
+        id: "plantoes-a-receber",
+        title: "Valores a receber",
+        description: `${billedPlantoes.length} plantoes faturados somam R$ ${total.toLocaleString("pt-BR")}.`,
+        href: "/dashboard/plantoes",
+        level: "info",
+        createdAt: today,
+      })
+    }
+  }
+
+  if (settings.notifications.vencimentos && dashboard.kpis.impostosEstimados > 0) {
+    notifications.push({
+      id: "imposto-mes",
+      title: dashboard.kpis.tributoLabel,
+      description: `Imposto a pagar estimado em R$ ${dashboard.kpis.impostosEstimados.toLocaleString("pt-BR")}.`,
+      href: "/dashboard",
+      level: "warning",
+      createdAt: today,
+    })
+  }
+
+  if (settings.notifications.relatorios) {
+    const notasEmitidas = notas.filter((nota) => nota.status === "emitida").slice(0, 3)
+    for (const nota of notasEmitidas) {
+      notifications.push({
+        id: `nota-${nota.id}`,
+        title: `Nota ${nota.numero} emitida`,
+        description: `${nota.tomador} - R$ ${nota.valor.toLocaleString("pt-BR")} em ${nota.dataEmissao}.`,
+        href: "/dashboard/notas",
+        level: "success",
+        createdAt: nota.dataEmissao,
+      })
+    }
+  }
+
+  if (notifications.length === 0) {
+    notifications.push({
+      id: "sem-pendencias",
+      title: "Tudo em dia",
+      description: "Nenhum alerta financeiro ou fiscal para mostrar agora.",
+      href: "/dashboard",
+      level: "success",
+      createdAt: today,
+    })
+  }
+
+  return notifications.slice(0, 8)
+}
+
 export function apiError(error: unknown) {
   const message = error instanceof Error ? error.message : "Erro interno"
   return NextResponse.json({ error: message }, { status: 500 })
