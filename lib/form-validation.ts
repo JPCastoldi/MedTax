@@ -23,6 +23,10 @@ export function formatUf(value: string) {
   return value.replace(/[^a-zA-Z]/g, "").slice(0, 2).toUpperCase()
 }
 
+export function formatCrm(value: string) {
+  return value.toUpperCase().replace(/[^0-9A-Z-]/g, "").slice(0, 11)
+}
+
 export function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }

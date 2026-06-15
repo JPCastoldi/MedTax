@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { AuthBrand, AuthField, AuthPrimaryButton, AuthShell } from "@/components/auth-shell"
-import { isValidCrm, isValidEmail } from "@/lib/form-validation"
+import { formatCrm, isValidCrm, isValidEmail } from "@/lib/form-validation"
 
 export default function CadastroPage() {
   const router = useRouter()
@@ -38,7 +38,7 @@ export default function CadastroPage() {
         <AuthField label="Nome completo" placeholder="Ex.: Joao Silva" value={name} onChange={setName} />
         <AuthField label="E-mail" type="email" placeholder="voce@email.com" value={email} onChange={setEmail} />
         <AuthField label="Senha" type="password" placeholder="Crie uma senha" value={password} onChange={setPassword} />
-        <AuthField label="CRM" placeholder="123456-SP" value={crm} onChange={(value) => setCrm(value.toUpperCase().replace(/[^0-9A-Z-]/g, "").slice(0, 11))} />
+        <AuthField label="CRM" placeholder="123456-SP" value={crm} onChange={(value) => setCrm(formatCrm(value))} />
         {email && !isValidEmail(email) && <p className="text-xs text-red-600">Digite um e-mail valido.</p>}
         {password && password.length < 6 && <p className="text-xs text-red-600">A senha precisa ter pelo menos 6 caracteres.</p>}
         {crm && !isValidCrm(crm) && <p className="text-xs text-red-600">Use um CRM como 123456-SP.</p>}

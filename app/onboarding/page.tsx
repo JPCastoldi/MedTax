@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { AuthBrand, AuthField, AuthPrimaryButton, AuthShell, OnboardingProgress } from "@/components/auth-shell"
-import { formatCnpj, formatPhone, formatUf, isValidCnpj, isValidCrm } from "@/lib/form-validation"
+import { formatCnpj, formatCrm, formatPhone, formatUf, isValidCnpj, isValidCrm } from "@/lib/form-validation"
 
 type Step = 1 | 2 | 3
 
@@ -96,7 +96,7 @@ export default function OnboardingPage() {
             <p className="text-sm text-slate-500 mt-1">Usamos esses dados para personalizar o painel e as notas.</p>
           </div>
           <AuthField label="Nome completo" value={profile.nome} onChange={(nome) => setProfile({ ...profile, nome })} />
-          <AuthField label="CRM" value={profile.crm} onChange={(crm) => setProfile({ ...profile, crm: crm.toUpperCase().replace(/[^0-9A-Z-]/g, "").slice(0, 11) })} />
+          <AuthField label="CRM" value={profile.crm} onChange={(crm) => setProfile({ ...profile, crm: formatCrm(crm) })} />
           <AuthField label="Telefone" value={profile.telefone} onChange={(telefone) => setProfile({ ...profile, telefone: formatPhone(telefone) })} />
           <AuthField label="Endereco profissional" value={profile.endereco} onChange={(endereco) => setProfile({ ...profile, endereco })} />
           {profile.crm && !isValidCrm(profile.crm) && <p className="text-xs text-red-600">Use um CRM como 123456-SP.</p>}

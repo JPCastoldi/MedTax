@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { formatCnpj, isValidCnpj } from "@/lib/form-validation"
 import type { Empresa } from "@/lib/types"
 
 const emptyForm: Omit<Empresa, "id"> = {
@@ -40,8 +41,10 @@ export default function EmpresasPage() {
     () => empresas.filter((empresa) => `${empresa.razaoSocial} ${empresa.nomeFantasia} ${empresa.cnpj}`.toLowerCase().includes(search.toLowerCase())),
     [empresas, search]
   )
+  const canSave = Boolean(isValidCnpj(form.cnpj) && form.razaoSocial.trim().length >= 3 && form.nomeFantasia.trim().length >= 2)
 
   async function save() {
+    if (!canSave) return
     const url = editingId ? `/api/empresas/${editingId}` : "/api/empresas"
     await fetch(url, {
       method: editingId ? "PUT" : "POST",
@@ -82,7 +85,7 @@ export default function EmpresasPage() {
       <Card>
         <CardHeader><CardTitle>{editingId ? "Editar empresa" : "Nova empresa"}</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-4">
-          <Field label="CNPJ" value={form.cnpj} onChange={(cnpj) => setForm({ ...form, cnpj })} />
+          <Field label="CNPJ" placeholder="00.000.000/0001-00" value={form.cnpj} onChange={(cnpj) => setForm({ ...form, cnpj: formatCnpj(cnpj) })} />
           <Field label="Razao social" value={form.razaoSocial} onChange={(razaoSocial) => setForm({ ...form, razaoSocial })} />
           <Field label="Nome fantasia" value={form.nomeFantasia} onChange={(nomeFantasia) => setForm({ ...form, nomeFantasia })} />
           <div className="space-y-2">
@@ -111,9 +114,10 @@ export default function EmpresasPage() {
             </Select>
           </div>
           <div className="flex gap-2 md:col-span-4">
-            <Button onClick={save}><Plus className="mr-2 h-4 w-4" />Salvar</Button>
+            <Button disabled={!canSave} onClick={save}><Plus className="mr-2 h-4 w-4" />Salvar</Button>
             {editingId && <Button variant="outline" onClick={() => { setEditingId(null); setForm(emptyForm) }}>Cancelar</Button>}
           </div>
+          {form.cnpj && !isValidCnpj(form.cnpj) && <p className="text-xs text-red-600 md:col-span-4">Digite um CNPJ com 14 numeros.</p>}
         </CardContent>
       </Card>
 
@@ -149,6 +153,6 @@ export default function EmpresasPage() {
   )
 }
 
-function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
-  return <div className="space-y-2"><Label>{label}</Label><Input type={type} value={value} onChange={(event) => onChange(event.target.value)} /></div>
+function Field({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string }) {
+  return <div className="space-y-2"><Label>{label}</Label><Input type={type} placeholder={placeholder} value={value} onChange={(event) => onChange(event.target.value)} /></div>
 }

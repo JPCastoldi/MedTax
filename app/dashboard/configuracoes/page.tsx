@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { formatCrm, formatPhone, isValidCrm, isValidEmail } from "@/lib/form-validation"
 import type { AppSettings } from "@/lib/types"
 
 export default function ConfiguracoesPage() {
@@ -31,6 +32,7 @@ export default function ConfiguracoesPage() {
   }
 
   if (!settings) return <p>Carregando configuracoes...</p>
+  const canSaveProfile = Boolean(settings.nome.trim().length >= 3 && isValidEmail(settings.email) && isValidCrm(settings.crm))
 
   return (
     <div className="space-y-6">
@@ -54,9 +56,9 @@ export default function ConfiguracoesPage() {
             <CardHeader><CardTitle>Dados pessoais e profissionais</CardTitle></CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <Field label="Nome" value={settings.nome} onChange={(nome) => setSettings({ ...settings, nome })} />
-              <Field label="Email" value={settings.email} onChange={(email) => setSettings({ ...settings, email })} />
-              <Field label="Telefone" value={settings.telefone} onChange={(telefone) => setSettings({ ...settings, telefone })} />
-              <Field label="CRM" value={settings.crm} onChange={(crm) => setSettings({ ...settings, crm })} />
+              <Field label="Email" type="email" value={settings.email} onChange={(email) => setSettings({ ...settings, email })} />
+              <Field label="Telefone" placeholder="(11) 99999-9999" value={settings.telefone} onChange={(telefone) => setSettings({ ...settings, telefone: formatPhone(telefone) })} />
+              <Field label="CRM" placeholder="123456-SP" value={settings.crm} onChange={(crm) => setSettings({ ...settings, crm: formatCrm(crm) })} />
               <div className="space-y-2">
                 <Label>Especialidade</Label>
                 <Select value={settings.especialidade} onValueChange={(especialidade) => setSettings({ ...settings, especialidade })}>
@@ -83,7 +85,9 @@ export default function ConfiguracoesPage() {
               <div className="md:col-span-2">
                 <Field label="Endereco" value={settings.endereco} onChange={(endereco) => setSettings({ ...settings, endereco })} />
               </div>
-              <Button className="md:col-span-2" onClick={save}><Save className="mr-2 h-4 w-4" />Salvar alteracoes</Button>
+              {settings.email && !isValidEmail(settings.email) && <p className="text-xs text-red-600 md:col-span-2">Digite um e-mail valido.</p>}
+              {settings.crm && !isValidCrm(settings.crm) && <p className="text-xs text-red-600 md:col-span-2">Use um CRM como 123456-SP.</p>}
+              <Button disabled={!canSaveProfile} className="md:col-span-2" onClick={save}><Save className="mr-2 h-4 w-4" />Salvar alteracoes</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -124,6 +128,6 @@ export default function ConfiguracoesPage() {
   )
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <div className="space-y-2"><Label>{label}</Label><Input value={value} onChange={(event) => onChange(event.target.value)} /></div>
+function Field({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string }) {
+  return <div className="space-y-2"><Label>{label}</Label><Input type={type} placeholder={placeholder} value={value} onChange={(event) => onChange(event.target.value)} /></div>
 }
