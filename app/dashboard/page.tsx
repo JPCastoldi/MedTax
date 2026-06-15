@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { Building2, ChevronRight, FileText, Wallet } from "lucide-react"
+import { Building2, CalendarDays, ChevronRight, FileText, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -41,6 +41,27 @@ export default function DashboardPage() {
         <Metric icon={Wallet} title="A receber no mes" value={`R$ ${kpis.valorAReceber.toLocaleString("pt-BR")}`} />
         <Metric icon={FileText} title="Imposto a pagar" value={`R$ ${kpis.impostosEstimados.toLocaleString("pt-BR")}`} />
       </div>
+
+      <Card className="border-emerald-100 bg-emerald-50/60">
+        <CardContent className="grid gap-5 py-5 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <h2 className="font-semibold text-emerald-950">Guia rapido do mes piloto</h2>
+            <div className="mt-3 grid gap-3 text-sm text-emerald-900 md:grid-cols-4">
+              <PilotStep step="1" text="Cadastre hospitais." />
+              <PilotStep step="2" text="Lance os plantoes no calendario." />
+              <PilotStep step="3" text="Mude para faturado e gere nota." />
+              <PilotStep step="4" text="Marque recebido quando cair o pagamento." />
+            </div>
+            <p className="mt-3 text-xs text-emerald-800">
+              Imposto a pagar e calculado apenas sobre recebidos com nota vinculada. Recebido direto sem nota aparece no caixa, mas nao entra no imposto.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm"><Link href="/dashboard/plantoes"><CalendarDays className="mr-2 h-4 w-4" />Abrir agenda</Link></Button>
+            <Button asChild size="sm" variant="outline"><Link href="/dashboard/notas"><FileText className="mr-2 h-4 w-4" />Ver notas</Link></Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
@@ -119,5 +140,14 @@ function Metric({ icon: Icon, title, value }: { icon: React.ElementType; title: 
       </CardHeader>
       <CardContent className="text-2xl font-bold">{value}</CardContent>
     </Card>
+  )
+}
+
+function PilotStep({ step, text }: { step: string; text: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{step}</span>
+      <span>{text}</span>
+    </div>
   )
 }
