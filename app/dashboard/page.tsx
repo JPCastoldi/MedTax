@@ -15,12 +15,39 @@ function currentMonth() {
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
+  const [error, setError] = useState("")
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
 
   useEffect(() => {
     setData(null)
-    fetch(`/api/dashboard?month=${selectedMonth}`).then((response) => response.json()).then(setData)
+    setError("")
+    fetch(`/api/dashboard?month=${selectedMonth}`)
+      .then(async (response) => {
+        const payload = await response.json()
+        if (!response.ok || !payload?.kpis) {
+          throw new Error(payload?.error ?? "Nao foi possivel carregar o dashboard.")
+        }
+        setData(payload)
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Nao foi possivel carregar o dashboard."))
   }, [selectedMonth])
+
+  if (error) {
+    return (
+      <Card className="border-red-200 bg-red-50">
+        <CardContent className="space-y-4 py-6">
+          <div>
+            <h1 className="text-xl font-semibold text-red-950">Nao foi possivel carregar o Dashboard</h1>
+            <p className="mt-2 text-sm text-red-800">{error}</p>
+            <p className="mt-2 text-sm text-red-800">
+              Verifique se o PostgreSQL esta ligado e se as migrations foram aplicadas com <code className="rounded bg-red-100 px-1">npm run db:deploy</code>.
+            </p>
+          </div>
+          <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+        </CardContent>
+      </Card>
+    )
+  }
 
   if (!data) return <p>Carregando dashboard...</p>
 
