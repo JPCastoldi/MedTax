@@ -106,6 +106,7 @@ model NotaFiscal {
   valor       Decimal    @db.Decimal(10, 2)
   competencia String
   dataEmissao DateTime   @default(now())
+  dataRecebimento DateTime?
   status      NotaStatus @default(EMITIDA)
   descricao   String?
   plantoes    Plantao[]

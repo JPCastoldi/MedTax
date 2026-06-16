@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { addMonths, eachDayOfInterval, endOfMonth, format, parseISO, startOfMonth, subMonths } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { CalendarDays, ChevronLeft, ChevronRight, FileText, Pencil, Plus, Trash2 } from "lucide-react"
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, FileText, Pencil, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -40,6 +40,7 @@ const emptyForm = {
   especialidade: "Clinica Geral",
   valor: 1200,
   status: "pendente" as UiStatus,
+  dataRecebimento: format(today, "yyyy-MM-dd"),
 }
 
 export default function PlantoesPage() {
@@ -135,6 +136,23 @@ export default function PlantoesPage() {
     await load()
   }
 
+  async function duplicateToSelectedDay(plantao: Plantao) {
+    await fetch("/api/plantoes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        hospitalId: plantao.hospitalId,
+        data: selectedDay,
+        horaInicio: plantao.horaInicio,
+        horaFim: plantao.horaFim,
+        especialidade: plantao.especialidade,
+        valor: plantao.valor,
+        status: "realizado",
+      }),
+    })
+    await load()
+  }
+
   async function gerarNota() {
     setBillingMessage("")
     if (!selectedBillingGroup || billingPlantaoIds.length === 0) return
@@ -186,6 +204,7 @@ export default function PlantoesPage() {
       especialidade: plantao.especialidade,
       valor: plantao.valor,
       status: apiToUiStatus(plantao.status),
+      dataRecebimento: notas.find((nota) => nota.id === plantao.notaFiscalId)?.dataRecebimento ?? format(today, "yyyy-MM-dd"),
     })
   }
 
@@ -255,6 +274,14 @@ export default function PlantoesPage() {
               </SelectContent>
             </Select>
           </div>
+          {form.status === "recebido" && (
+            <Field
+              label="Data de recebimento"
+              type="date"
+              value={form.dataRecebimento}
+              onChange={(dataRecebimento) => setForm({ ...form, dataRecebimento })}
+            />
+          )}
           <div className="flex items-end gap-2">
             <Button onClick={save}><Plus className="mr-2 h-4 w-4" />Salvar</Button>
             {editingId && <Button variant="outline" onClick={() => clearForm()}>Cancelar</Button>}
@@ -369,11 +396,16 @@ export default function PlantoesPage() {
           <CardContent className="space-y-3">
             {selectedDayPlantoes.length === 0 && <p className="text-sm text-muted-foreground">Sem plantoes neste dia. Clique em salvar no formulario para criar.</p>}
             {selectedDayPlantoes.map((plantao) => (
-              <button key={plantao.id} className="block w-full rounded-md border p-3 text-left hover:border-emerald-500" onClick={() => edit(plantao)}>
-                <p className="font-medium">{plantao.hospitalNome}</p>
-                <p className="text-sm text-muted-foreground">{plantao.horaInicio}-{plantao.horaFim} | {statusLabels[apiToUiStatus(plantao.status)]}</p>
-                <p className="text-sm font-semibold">R$ {plantao.valor.toLocaleString("pt-BR")}</p>
-              </button>
+              <div key={plantao.id} className="rounded-md border p-3 hover:border-emerald-500">
+                <button className="block w-full text-left" onClick={() => edit(plantao)}>
+                  <p className="font-medium">{plantao.hospitalNome}</p>
+                  <p className="text-sm text-muted-foreground">{plantao.horaInicio}-{plantao.horaFim} | {statusLabels[apiToUiStatus(plantao.status)]}</p>
+                  <p className="text-sm font-semibold">R$ {plantao.valor.toLocaleString("pt-BR")}</p>
+                </button>
+                <Button variant="ghost" size="sm" className="mt-2 px-0 text-emerald-700" onClick={() => duplicateToSelectedDay(plantao)}>
+                  <Copy className="mr-2 h-4 w-4" />Copiar para este dia
+                </Button>
+              </div>
             ))}
           </CardContent>
         </Card>
@@ -390,6 +422,7 @@ export default function PlantoesPage() {
               </button>
               <div className="flex items-center gap-2">
                 <span className="font-semibold">R$ {plantao.valor.toLocaleString("pt-BR")}</span>
+                <Button variant="ghost" size="icon" title="Copiar para o dia selecionado" onClick={() => duplicateToSelectedDay(plantao)}><Copy className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => remove(plantao.id)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </div>

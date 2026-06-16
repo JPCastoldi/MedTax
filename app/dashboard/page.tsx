@@ -46,7 +46,7 @@ export default function DashboardPage() {
         <CardContent className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="font-semibold">Previsao tributaria do mes</h2>
-            <p className="text-sm text-muted-foreground">Calculada apenas sobre recebidos com nota vinculada no mes selecionado.</p>
+            <p className="text-sm text-muted-foreground">Calculada sobre notas emitidas no mes selecionado, mesmo que sejam pagas em outro mes.</p>
           </div>
           <div className="flex flex-wrap gap-6">
             <strong>{kpis.tributoLabel}: R$ {kpis.impostosEstimados.toLocaleString("pt-BR")}</strong>

@@ -14,8 +14,8 @@ export const plantoesSeed: Plantao[] = [
 ]
 
 export const notasSeed: NotaFiscal[] = [
-  { id: "n1", numero: "202600001", tomador: "Hospital Sao Lucas", cnpjTomador: "12.345.678/0001-90", hospitalId: "h1", valor: 1500, dataEmissao: "2026-06-06", competencia: "06/2026", status: "emitida", empresa: "MedTax Demo" },
-  { id: "n2", numero: "202600002", tomador: "Clinica Santa Maria", cnpjTomador: "98.765.432/0001-10", hospitalId: "h2", valor: 1200, dataEmissao: "2026-06-15", competencia: "06/2026", status: "emitida", empresa: "MedTax Demo" },
+  { id: "n1", numero: "202600001", tomador: "Hospital Sao Lucas", cnpjTomador: "12.345.678/0001-90", hospitalId: "h1", valor: 1500, dataEmissao: "2026-06-06", dataRecebimento: "2026-06-20", competencia: "06/2026", status: "emitida", empresa: "MedTax Demo" },
+  { id: "n2", numero: "202600002", tomador: "Clinica Santa Maria", cnpjTomador: "98.765.432/0001-10", hospitalId: "h2", valor: 1200, dataEmissao: "2026-06-15", dataRecebimento: null, competencia: "06/2026", status: "emitida", empresa: "MedTax Demo" },
 ]
 
 export const empresasSeed: Empresa[] = [

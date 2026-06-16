@@ -254,9 +254,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <HelpStep step="1" text="Cadastre os hospitais onde trabalha." />
                   <HelpStep step="2" text="Lance os plantoes no calendario com valor e hospital." />
                   <HelpStep step="3" text="Quando for cobrar, mude o plantao para faturado e gere a nota por hospital." />
-                  <HelpStep step="4" text="Quando o pagamento cair, marque o plantao como recebido." />
+                  <HelpStep step="4" text="Quando o pagamento cair, marque como recebido e informe a data de recebimento." />
                   <div className="rounded-md bg-emerald-50 p-3 text-xs text-emerald-800">
-                    Imposto a pagar e calculado apenas sobre recebidos com nota vinculada. Recebido direto sem nota aparece no caixa, mas nao entra no imposto.
+                    Imposto a pagar segue o mes de emissao da nota. Recebido no mes segue a data de pagamento informada.
                   </div>
                 </div>
                 <div className="flex gap-2 border-t p-3">

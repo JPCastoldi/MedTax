@@ -51,12 +51,12 @@ export default function RelatoriosPage() {
   function exportCsv() {
     if (!report) return
     const rows = tipo === "notas"
-      ? report.notas.map((nota) => [nota.numero, nota.tomador, nota.dataEmissao, nota.competencia, nota.valor, nota.status])
+      ? report.notas.map((nota) => [nota.numero, nota.tomador, nota.dataEmissao, nota.dataRecebimento ?? "", nota.competencia, nota.valor, nota.status])
       : tipo === "empresas"
         ? report.empresas.map((empresa) => [empresa.cnpj, empresa.razaoSocial, empresa.regimeTributario, empresa.fatorR, empresa.situacao])
         : report.plantoes.map((plantao) => [plantao.data, plantao.hospitalNome, plantao.especialidade, plantao.valor, labelStatus(plantao.status)])
     const header = tipo === "notas"
-      ? ["numero", "tomador", "dataEmissao", "competencia", "valor", "status"]
+      ? ["numero", "tomador", "dataEmissao", "dataRecebimento", "competencia", "valor", "status"]
       : tipo === "empresas"
         ? ["cnpj", "razaoSocial", "regime", "fatorR", "situacao"]
         : ["data", "hospital", "especialidade", "valor", "status"]
@@ -148,13 +148,14 @@ export default function RelatoriosPage() {
           )}
           {tipo === "notas" && (
             <table className="w-full text-sm">
-              <thead><tr className="border-b text-left"><th className="py-2">Numero</th><th>Tomador</th><th>Emissao</th><th>Competencia</th><th>Valor</th></tr></thead>
+              <thead><tr className="border-b text-left"><th className="py-2">Numero</th><th>Tomador</th><th>Emissao</th><th>Pagamento</th><th>Competencia</th><th>Valor</th></tr></thead>
               <tbody>
                 {report.notas.map((nota) => (
                   <tr key={nota.id} className="border-b last:border-0">
                     <td className="py-2">{nota.numero}</td>
                     <td>{nota.tomador}</td>
                     <td>{nota.dataEmissao}</td>
+                    <td>{nota.dataRecebimento ?? "Pendente"}</td>
                     <td>{nota.competencia}</td>
                     <td>R$ {nota.valor.toLocaleString("pt-BR")}</td>
                   </tr>

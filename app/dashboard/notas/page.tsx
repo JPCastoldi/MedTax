@@ -51,6 +51,7 @@ export default function NotasPage() {
                 <TableHead>Numero</TableHead>
                 <TableHead>Tomador</TableHead>
                 <TableHead>Emissao</TableHead>
+                <TableHead>Pagamento</TableHead>
                 <TableHead>Competencia</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead>Status</TableHead>
@@ -62,6 +63,7 @@ export default function NotasPage() {
                   <TableCell className="font-mono"><FileText className="mr-2 inline h-4 w-4" />{nota.numero}</TableCell>
                   <TableCell>{nota.tomador}<p className="text-xs text-muted-foreground">{nota.cnpjTomador}</p></TableCell>
                   <TableCell>{new Date(`${nota.dataEmissao}T12:00:00`).toLocaleDateString("pt-BR")}</TableCell>
+                  <TableCell>{nota.dataRecebimento ? new Date(`${nota.dataRecebimento}T12:00:00`).toLocaleDateString("pt-BR") : "Pendente"}</TableCell>
                   <TableCell>{nota.competencia}</TableCell>
                   <TableCell className="text-right">R$ {nota.valor.toLocaleString("pt-BR")}</TableCell>
                   <TableCell><Badge>{nota.status}</Badge></TableCell>

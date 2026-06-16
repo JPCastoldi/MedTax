@@ -46,6 +46,8 @@ function isoDate(date: Date | string) {
   return new Date(date).toISOString().slice(0, 10)
 }
 
+type PlantaoPayload = Partial<Plantao> & { dataRecebimento?: string }
+
 function addHospitalStats(hospital: Omit<Hospital, "totalFaturado" | "plantoesRealizados" | "mediaAtraso" | "ultimoPagamento">, plantoes: Plantao[], notas: NotaFiscal[]): Hospital {
   const hospitalPlantoes = plantoes.filter((p) => p.hospitalId === hospital.id)
   const receivedPlantoes = hospitalPlantoes.filter((p) => p.status === "recebido")
@@ -147,11 +149,12 @@ export async function listPlantoes(userId?: string | null) {
   return store().plantoes
 }
 
-export async function savePlantao(payload: Partial<Plantao>, userId?: string | null) {
+export async function savePlantao(payload: PlantaoPayload, userId?: string | null) {
   if (hasDatabaseUrl()) {
     if (!userId) throw new Error("Usuario nao autenticado.")
     const hospital = await prisma.hospital.findFirst({ where: { id: payload.hospitalId ?? "", userId } })
     if (!hospital) throw new Error("Hospital nao encontrado.")
+    const status = statusToDb(payload.status ?? "agendado")
     const data = {
       hospitalId: payload.hospitalId ?? "",
       data: new Date(`${payload.data}T12:00:00`),
@@ -159,12 +162,27 @@ export async function savePlantao(payload: Partial<Plantao>, userId?: string | n
       horaFim: payload.horaFim ?? "07:00",
       especialidade: payload.especialidade ?? "",
       valor: payload.valor ?? 0,
-      status: statusToDb(payload.status ?? "agendado"),
+      status,
     }
     if (payload.id) {
-      const plantao = await prisma.plantao.findFirst({ where: { id: payload.id, hospital: { userId } }, select: { id: true } })
+      const plantao = await prisma.plantao.findFirst({ where: { id: payload.id, hospital: { userId } }, select: { id: true, notaFiscalId: true } })
       if (!plantao) throw new Error("Plantao nao encontrado.")
-      return prisma.plantao.update({ where: { id: plantao.id }, data })
+      const updated = await prisma.plantao.update({ where: { id: plantao.id }, data })
+      if (status === "RECEBIDO" && plantao.notaFiscalId) {
+        await prisma.notaFiscal.update({
+          where: { id: plantao.notaFiscalId },
+          data: { dataRecebimento: new Date(`${payload.dataRecebimento ?? isoDate(new Date())}T12:00:00`) },
+        })
+      } else if (plantao.notaFiscalId) {
+        const stillReceived = await prisma.plantao.count({ where: { notaFiscalId: plantao.notaFiscalId, status: "RECEBIDO" } })
+        if (stillReceived === 0) {
+          await prisma.notaFiscal.update({
+            where: { id: plantao.notaFiscalId },
+            data: { dataRecebimento: null },
+          })
+        }
+      }
+      return updated
     }
     return prisma.plantao.create({ data })
   }
@@ -173,6 +191,20 @@ export async function savePlantao(payload: Partial<Plantao>, userId?: string | n
   if (!hospital) throw new Error("Hospital nao encontrado")
   if (payload.id) {
     data.plantoes = data.plantoes.map((p) => (p.id === payload.id ? { ...p, ...payload, hospitalNome: hospital.nome, hospitalCor: hospital.cor } as Plantao : p))
+    if (payload.status === "recebido") {
+      const plantao = data.plantoes.find((p) => p.id === payload.id)
+      if (plantao?.notaFiscalId) {
+        data.notas = data.notas.map((nota) => nota.id === plantao.notaFiscalId ? { ...nota, dataRecebimento: payload.dataRecebimento ?? isoDate(new Date()) } : nota)
+      }
+    } else {
+      const plantao = data.plantoes.find((p) => p.id === payload.id)
+      if (plantao?.notaFiscalId) {
+        const stillReceived = data.plantoes.some((p) => p.notaFiscalId === plantao.notaFiscalId && p.status === "recebido")
+        if (!stillReceived) {
+          data.notas = data.notas.map((nota) => nota.id === plantao.notaFiscalId ? { ...nota, dataRecebimento: null } : nota)
+        }
+      }
+    }
     return data.plantoes.find((p) => p.id === payload.id)
   }
   const plantao = { ...payload, id: crypto.randomUUID(), hospitalNome: hospital.nome, hospitalCor: hospital.cor } as Plantao
@@ -202,6 +234,7 @@ export async function listNotas(userId?: string | null) {
       hospitalId: n.hospitalId,
       valor: Number(n.valor),
       dataEmissao: isoDate(n.dataEmissao),
+      dataRecebimento: n.dataRecebimento ? isoDate(n.dataRecebimento) : null,
       competencia: n.competencia,
       status: n.status.toLowerCase() as "emitida" | "cancelada",
       empresa: "MedTax",
@@ -244,7 +277,7 @@ export async function gerarNotaPorHospital(
     return nota
   }
   const data = store()
-  const nota: NotaFiscal = { id: crypto.randomUUID(), numero, tomador: hospital.nome, cnpjTomador: hospital.cnpj, hospitalId, valor, dataEmissao: options?.dataEmissao ?? isoDate(new Date()), competencia, status: "emitida", empresa: "MedTax" }
+  const nota: NotaFiscal = { id: crypto.randomUUID(), numero, tomador: hospital.nome, cnpjTomador: hospital.cnpj, hospitalId, valor, dataEmissao: options?.dataEmissao ?? isoDate(new Date()), dataRecebimento: null, competencia, status: "emitida", empresa: "MedTax" }
   data.notas.unshift(nota)
   data.plantoes = data.plantoes.map((p) => (plantoes.some((item) => item.id === p.id) ? { ...p, status: "faturado", notaFiscalId: nota.id } : p))
   return nota
@@ -259,7 +292,7 @@ export async function dashboardData(userId?: string | null, month?: string | nul
   const recebidosMes = plantoes.filter((p) => {
     if (p.status !== "recebido") return false
     const nota = p.notaFiscalId ? notasById.get(p.notaFiscalId) : null
-    if (nota) return nota.status === "emitida" && nota.dataEmissao.startsWith(nowMonth)
+    if (nota) return nota.status === "emitida" && Boolean(nota.dataRecebimento?.startsWith(nowMonth))
     return p.data.startsWith(nowMonth)
   })
   const faturadosMes = plantoes.filter((p) => {
@@ -272,17 +305,13 @@ export async function dashboardData(userId?: string | null, month?: string | nul
   const valorPrevisto = plantoesMes.reduce((sum, p) => sum + p.valor, 0)
   const valorFaturado = notasMes.reduce((sum, n) => sum + n.valor, 0)
   const valorRecebido = recebidosMes.reduce((sum, p) => sum + p.valor, 0)
-  const valorRecebidoComNota = recebidosMes.reduce((sum, p) => {
-    const nota = p.notaFiscalId ? notasById.get(p.notaFiscalId) : null
-    return nota ? sum + p.valor : sum
-  }, 0)
   const valorAReceber = faturadosMes.reduce((sum, p) => sum + p.valor, 0)
   const pendenteNota = pendentesMes.reduce((sum, p) => sum + p.valor, 0)
   const regime = empresas[0]?.regimeTributario ?? "Simples Nacional"
   const isSimples = regime.toLowerCase().includes("simples")
   const tributoLabel = isSimples ? "DAS estimado" : "Impostos estimados"
   const taxRate = isSimples ? 0.06 : 0.1333
-  const impostosEstimados = valorRecebidoComNota * taxRate
+  const impostosEstimados = valorFaturado * taxRate
   const ranking = hospitais.map((h) => ({ nome: h.nome, faturado: h.totalFaturado, plantoes: h.plantoesRealizados, cor: h.cor })).sort((a, b) => b.faturado - a.faturado)
   return {
       kpis: { plantoesMes: plantoesMes.length, valorPrevisto, valorFaturado, valorRecebido, valorAReceber, pendenteNota, impostosEstimados, liquidoEstimado: valorRecebido - impostosEstimados, tributoLabel },

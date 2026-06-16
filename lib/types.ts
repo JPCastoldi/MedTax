@@ -39,6 +39,7 @@ export type NotaFiscal = {
   hospitalId: string
   valor: number
   dataEmissao: string
+  dataRecebimento?: string | null
   competencia: string
   status: NotaStatus
   empresa: string
