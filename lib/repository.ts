@@ -215,11 +215,47 @@ export async function savePlantao(payload: PlantaoPayload, userId?: string | nul
 export async function deletePlantao(id: string, userId?: string | null) {
   if (hasDatabaseUrl()) {
     if (!userId) throw new Error("Usuario nao autenticado.")
-    const plantao = await prisma.plantao.findFirst({ where: { id, hospital: { userId } }, select: { id: true } })
+    const plantao = await prisma.plantao.findFirst({ where: { id, hospital: { userId } }, select: { id: true, notaFiscalId: true } })
     if (!plantao) throw new Error("Plantao nao encontrado.")
-    return prisma.plantao.delete({ where: { id } })
+    const deleted = await prisma.plantao.delete({ where: { id } })
+    if (plantao.notaFiscalId) {
+      const remainingPlantoes = await prisma.plantao.findMany({
+        where: { notaFiscalId: plantao.notaFiscalId, hospital: { userId } },
+        select: { valor: true, status: true },
+      })
+      if (remainingPlantoes.length === 0) {
+        await prisma.notaFiscal.delete({ where: { id: plantao.notaFiscalId } })
+      } else {
+        await prisma.notaFiscal.update({
+          where: { id: plantao.notaFiscalId },
+          data: {
+            valor: remainingPlantoes.reduce((sum, item) => sum + Number(item.valor), 0),
+            dataRecebimento: remainingPlantoes.some((item) => item.status === "RECEBIDO") ? undefined : null,
+          },
+        })
+      }
+    }
+    return deleted
   }
-  store().plantoes = store().plantoes.filter((p) => p.id !== id)
+  const data = store()
+  const plantao = data.plantoes.find((p) => p.id === id)
+  data.plantoes = data.plantoes.filter((p) => p.id !== id)
+  if (plantao?.notaFiscalId) {
+    const remainingPlantoes = data.plantoes.filter((p) => p.notaFiscalId === plantao.notaFiscalId)
+    if (remainingPlantoes.length === 0) {
+      data.notas = data.notas.filter((nota) => nota.id !== plantao.notaFiscalId)
+    } else {
+      data.notas = data.notas.map((nota) =>
+        nota.id === plantao.notaFiscalId
+          ? {
+              ...nota,
+              valor: remainingPlantoes.reduce((sum, item) => sum + item.valor, 0),
+              dataRecebimento: remainingPlantoes.some((item) => item.status === "recebido") ? nota.dataRecebimento : null,
+            }
+          : nota
+      )
+    }
+  }
 }
 
 export async function listNotas(userId?: string | null) {
@@ -287,7 +323,8 @@ export async function dashboardData(userId?: string | null, month?: string | nul
   const [plantoes, notas, hospitais, empresas] = await Promise.all([listPlantoes(userId), listNotas(userId), listHospitals(userId), listEmpresas(userId)])
   const nowMonth = month && /^\d{4}-\d{2}$/.test(month) ? month : isoDate(new Date()).slice(0, 7)
   const plantoesMes = plantoes.filter((p) => p.data.startsWith(nowMonth))
-  const notasMes = notas.filter((n) => n.dataEmissao.startsWith(nowMonth) && n.status === "emitida")
+  const notaIdsComPlantao = new Set(plantoes.map((p) => p.notaFiscalId).filter(Boolean))
+  const notasMes = notas.filter((n) => n.dataEmissao.startsWith(nowMonth) && n.status === "emitida" && notaIdsComPlantao.has(n.id))
   const notasById = new Map(notas.map((nota) => [nota.id, nota]))
   const recebidosMes = plantoes.filter((p) => {
     if (p.status !== "recebido") return false
@@ -312,7 +349,18 @@ export async function dashboardData(userId?: string | null, month?: string | nul
   const tributoLabel = isSimples ? "DAS estimado" : "Impostos estimados"
   const taxRate = isSimples ? 0.06 : 0.1333
   const impostosEstimados = valorFaturado * taxRate
-  const ranking = hospitais.map((h) => ({ nome: h.nome, faturado: h.totalFaturado, plantoes: h.plantoesRealizados, cor: h.cor })).sort((a, b) => b.faturado - a.faturado)
+  const ranking = hospitais
+    .map((h) => {
+      const hospitalPlantoesMes = plantoesMes.filter((p) => p.hospitalId === h.id)
+      const hospitalRecebidosMes = recebidosMes.filter((p) => p.hospitalId === h.id)
+      return {
+        nome: h.nome,
+        faturado: hospitalRecebidosMes.reduce((sum, p) => sum + p.valor, 0),
+        plantoes: hospitalPlantoesMes.length,
+        cor: h.cor,
+      }
+    })
+    .sort((a, b) => b.faturado - a.faturado || b.plantoes - a.plantoes)
   return {
       kpis: { plantoesMes: plantoesMes.length, valorPrevisto, valorFaturado, valorRecebido, valorAReceber, pendenteNota, impostosEstimados, liquidoEstimado: valorRecebido - impostosEstimados, tributoLabel },
       revenueData: [{ month: nowMonth, faturamento: valorRecebido, impostos: impostosEstimados }],

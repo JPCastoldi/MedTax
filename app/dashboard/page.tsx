@@ -123,7 +123,7 @@ export default function DashboardPage() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: hospital.cor }}>{index + 1}</span>
                 <div className="flex-1">
                   <p className="font-medium">{hospital.nome}</p>
-                  <p className="text-sm text-muted-foreground">{hospital.plantoes} plantoes</p>
+                  <p className="text-sm text-muted-foreground">{hospital.plantoes} plantoes no mes</p>
                 </div>
                 <strong>R$ {hospital.faturado.toLocaleString("pt-BR")}</strong>
               </div>
